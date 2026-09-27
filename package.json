@@ -1,0 +1,28 @@
+{
+  "name": "ledgr-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LogPast (Ledgr) - Past-Only Work Log & Reporting Tool (Web, PWA, Android, iOS, Desktop)",
+  "scripts": {
+    "install:all": "npm run install:shared && npm run install:api && npm run install:web",
+    "install:shared": "npm --prefix packages/shared install",
+    "install:api": "npm --prefix apps/api install",
+    "install:web": "npm --prefix apps/web install",
+    "build:shared": "npm --prefix packages/shared run build",
+    "build:api": "npm --prefix apps/api run build",
+    "build:web": "npm --prefix apps/web run build",
+    "build": "npm run build:shared && npm run build:api && npm run build:web",
+    "dev:web": "npm --prefix apps/web run dev",
+    "dev:api": "npm --prefix apps/api run dev",
+    "test:shared": "npm --prefix packages/shared test",
+    "test:api": "npm --prefix apps/api test",
+    "test:web": "npm --prefix apps/web test",
+    "test": "npm run test:shared && npm run test:api && npm run test:web",
+    "test:perf": "npm --prefix apps/api run test:perf",
+    "lint": "npm --prefix packages/shared run lint && npm --prefix apps/api run lint && npm --prefix apps/web run lint",
+    "typecheck": "npm --prefix packages/shared run typecheck && npm --prefix apps/api run typecheck && npm --prefix apps/web run typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,138 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Deliberate refined emerald/teal accent - not default indigo/blue-600 */
+    --primary: 173 80% 34%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 25% 93%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 25% 94%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 25% 90%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 20% 88%;
+    --input: 214 20% 88%;
+    --ring: 173 80% 34%;
+
+    --radius: 0.625rem;
+
+    /* Semantic status tokens */
+    --status-done: 142 70% 40%;
+    --status-done-foreground: 0 0% 100%;
+    --status-in-progress: 38 92% 45%;
+    --status-in-progress-foreground: 0 0% 100%;
+    --status-cancelled: 0 72% 51%;
+    --status-cancelled-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 224 45% 7%;
+    --foreground: 210 20% 98%;
+
+    --card: 224 40% 11%;
+    --card-foreground: 210 20% 98%;
+
+    --popover: 224 38% 14%;
+    --popover-foreground: 210 20% 98%;
+
+    /* Deliberate refined teal/emerald accent for dark mode */
+    --primary: 173 75% 42%;
+    --primary-foreground: 224 45% 7%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 20% 98%;
+
+    --muted: 217 33% 16%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 33% 20%;
+    --accent-foreground: 210 20% 98%;
+
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 217 30% 20%;
+    --input: 217 30% 20%;
+    --ring: 173 75% 42%;
+
+    /* Semantic status tokens for dark mode */
+    --status-done: 142 60% 35%;
+    --status-done-foreground: 142 70% 95%;
+    --status-in-progress: 38 85% 40%;
+    --status-in-progress-foreground: 38 90% 95%;
+    --status-cancelled: 0 65% 45%;
+    --status-cancelled-foreground: 0 70% 95%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    touch-action: manipulation;
+  }
+}
+
+/* Glassmorphism & Elevation */
+.elevated-card {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+}
+
+.elevated-floating {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+.dark .elevated-floating {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.45);
+}
+
+/* Mobile Safe Areas */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 16px);
+}
