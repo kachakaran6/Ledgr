@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
@@ -14,6 +15,9 @@ import { subtaskRoutes } from './routes/subtasks';
 import { exportRoutes } from './routes/export';
 import { syncRoutes } from './routes/sync';
 import { auditRoutes } from './routes/audit';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
