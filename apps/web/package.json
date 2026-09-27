@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ledgr/shared": "file:../../packages/shared/ledgr-shared-1.0.0.tgz",
+    "@ledgr/shared": "file:../../packages/shared",
     "@tanstack/react-query": "^5.66.11",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",

@@ -17,15 +17,15 @@ COPY apps/web ./apps/web
 
 # Install & build shared
 WORKDIR /app/packages/shared
-RUN npm install && npm run build && npm pack
+RUN npm install --no-package-lock && npm run build
 
 # Install & build web frontend
 WORKDIR /app/apps/web
-RUN npm install && npm run build
+RUN npm install --no-package-lock && npm run build
 
 # Install & build backend api
 WORKDIR /app/apps/api
-RUN npm install && npm run build
+RUN npm install --no-package-lock && npm run build
 
 # 2. Production Runner
 FROM node:22-alpine AS runner
@@ -40,7 +40,6 @@ ENV HOST=0.0.0.0
 COPY package.json ./
 COPY --from=builder /app/packages/shared/package.json ./packages/shared/
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
-COPY --from=builder /app/packages/shared/ledgr-shared-*.tgz ./packages/shared/
 
 COPY --from=builder /app/apps/api/package.json ./apps/api/
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
@@ -49,7 +48,7 @@ COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/web/dist ./apps/api/public
 
 WORKDIR /app/apps/api
-RUN npm install --omit=dev
+RUN npm install --omit=dev --no-package-lock
 
 EXPOSE 3000
 

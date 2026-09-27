@@ -18,7 +18,7 @@
     "@fastify/jwt": "^9.0.4",
     "@fastify/rate-limit": "^10.2.2",
     "@fastify/sensible": "^6.0.3",
-    "@ledgr/shared": "file:../../packages/shared/ledgr-shared-1.0.0.tgz",
+    "@ledgr/shared": "file:../../packages/shared",
     "@supabase/supabase-js": "^2.49.1",
     "bcryptjs": "^3.0.2",
     "csv-stringify": "^6.5.2",
