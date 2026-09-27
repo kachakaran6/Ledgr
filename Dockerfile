@@ -8,8 +8,7 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Copy root monorepo metadata
-COPY package.json ./
-COPY tsconfig.base.json ./
+COPY package.json tsconfig.base.json ./
 
 # Copy packages & apps
 COPY packages/shared ./packages/shared
@@ -37,14 +36,14 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
 
-# Copy root configs & built packages
+# Copy root configs & built packages from builder
 COPY package.json ./
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/shared/dist ./packages/shared/dist
-COPY packages/shared/ledgr-shared-*.tgz ./packages/shared/
+COPY --from=builder /app/packages/shared/package.json ./packages/shared/
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/packages/shared/ledgr-shared-*.tgz ./packages/shared/
 
-COPY apps/api/package.json ./apps/api/
-COPY apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/package.json ./apps/api/
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
 
 # Copy built frontend assets to api/public for static serving
 COPY --from=builder /app/apps/web/dist ./apps/api/public
