@@ -107,8 +107,9 @@ export class PostgresDatabase implements IDatabase {
   // USERS
   async createUser(email: string, passwordHash: string, name?: string): Promise<DbUser> {
     await this.init();
+    const pool = await this.getPool();
     const normalizedEmail = email.toLowerCase().trim();
-    const result = await this.pool.query(
+    const result = await pool.query(
       `INSERT INTO users (id, email, password_hash, name, created_at, updated_at)
        VALUES ($1, $2, $3, $4, NOW(), NOW())
        RETURNING id, email, password_hash, name, created_at, updated_at`,
@@ -127,8 +128,9 @@ export class PostgresDatabase implements IDatabase {
 
   async getUserByEmail(email: string): Promise<DbUser | null> {
     await this.init();
+    const pool = await this.getPool();
     const normalizedEmail = email.toLowerCase().trim();
-    const result = await this.pool.query(
+    const result = await pool.query(
       `SELECT id, email, password_hash, name, created_at, updated_at
        FROM users WHERE LOWER(email) = LOWER($1)`,
       [normalizedEmail]
@@ -147,7 +149,8 @@ export class PostgresDatabase implements IDatabase {
 
   async getUserById(id: string): Promise<DbUser | null> {
     await this.init();
-    const result = await this.pool.query(
+    const pool = await this.getPool();
+    const result = await pool.query(
       `SELECT id, email, password_hash, name, created_at, updated_at
        FROM users WHERE id = $1`,
       [id]
@@ -166,13 +169,15 @@ export class PostgresDatabase implements IDatabase {
 
   async deleteUser(userId: string): Promise<boolean> {
     await this.init();
-    const result = await this.pool.query('DELETE FROM users WHERE id = $1', [userId]);
+    const pool = await this.getPool();
+    const result = await pool.query('DELETE FROM users WHERE id = $1', [userId]);
     return (result.rowCount ?? 0) > 0;
   }
 
   // TITLES
   async getTitles(userId: string, includeArchived = false): Promise<Title[]> {
     await this.init();
+    const pool = await this.getPool();
     const query = `
       SELECT t.*, 
         (SELECT COUNT(*)::int FROM subtasks s WHERE s.title_id = t.id AND s.deleted_at IS NULL) as subtask_count,
@@ -182,8 +187,8 @@ export class PostgresDatabase implements IDatabase {
       ${includeArchived ? '' : 'AND t.is_archived = FALSE'}
       ORDER BY t.sort_order ASC, t.created_at DESC
     `;
-    const res = await this.pool.query(query, [userId]);
-    return res.rows.map((row) => ({
+    const res = await pool.query(query, [userId]);
+    return res.rows.map((row: any): Title => ({
       id: row.id,
       user_id: row.user_id,
       name: row.name,
@@ -193,14 +198,15 @@ export class PostgresDatabase implements IDatabase {
       sort_order: row.sort_order,
       created_at: new Date(row.created_at).toISOString(),
       updated_at: new Date(row.updated_at).toISOString(),
-      deleted_at: row.deleted_at ? new Date(row.deleted_at).toISOString() : undefined,
+      deleted_at: row.deleted_at ? new Date(row.deleted_at).toISOString() : null,
       subtask_count: row.subtask_count || 0,
-      last_logged_date: row.last_logged_date || undefined
+      last_logged_date: row.last_logged_date ? String(row.last_logged_date).split('T')[0] : null
     }));
   }
 
   async getTitleById(userId: string, titleId: string): Promise<Title | null> {
     await this.init();
+    const pool = await this.getPool();
     const query = `
       SELECT t.*, 
         (SELECT COUNT(*)::int FROM subtasks s WHERE s.title_id = t.id AND s.deleted_at IS NULL) as subtask_count,
@@ -208,7 +214,7 @@ export class PostgresDatabase implements IDatabase {
       FROM titles t
       WHERE t.id = $1 AND t.user_id = $2 AND t.deleted_at IS NULL
     `;
-    const res = await this.pool.query(query, [titleId, userId]);
+    const res = await pool.query(query, [titleId, userId]);
     if (!res.rows.length) return null;
     const row = res.rows[0];
     return {
@@ -221,16 +227,17 @@ export class PostgresDatabase implements IDatabase {
       sort_order: row.sort_order,
       created_at: new Date(row.created_at).toISOString(),
       updated_at: new Date(row.updated_at).toISOString(),
-      deleted_at: row.deleted_at ? new Date(row.deleted_at).toISOString() : undefined,
+      deleted_at: row.deleted_at ? new Date(row.deleted_at).toISOString() : null,
       subtask_count: row.subtask_count || 0,
-      last_logged_date: row.last_logged_date || undefined
+      last_logged_date: row.last_logged_date ? String(row.last_logged_date).split('T')[0] : null
     };
   }
 
   async createTitle(userId: string, input: CreateTitleInput): Promise<Title> {
     await this.init();
+    const pool = await this.getPool();
     const id = uuidv4();
-    const res = await this.pool.query(
+    const res = await pool.query(
       `INSERT INTO titles (id, user_id, name, color, icon, is_archived, sort_order, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, FALSE, $6, NOW(), NOW())
        RETURNING *`,
@@ -247,12 +254,15 @@ export class PostgresDatabase implements IDatabase {
       sort_order: row.sort_order,
       created_at: new Date(row.created_at).toISOString(),
       updated_at: new Date(row.updated_at).toISOString(),
-      subtask_count: 0
+      deleted_at: null,
+      subtask_count: 0,
+      last_logged_date: null
     };
   }
 
   async updateTitle(userId: string, titleId: string, input: UpdateTitleInput): Promise<Title | null> {
     await this.init();
+    const pool = await this.getPool();
     const existing = await this.getTitleById(userId, titleId);
     if (!existing) return null;
 
@@ -282,18 +292,19 @@ export class PostgresDatabase implements IDatabase {
     }
 
     const query = `UPDATE titles SET ${updates.join(', ')} WHERE id = $1 AND user_id = $2 RETURNING *`;
-    await this.pool.query(query, values);
+    await pool.query(query, values);
     return this.getTitleById(userId, titleId);
   }
 
   async deleteTitle(userId: string, titleId: string): Promise<boolean> {
     await this.init();
-    const res = await this.pool.query(
+    const pool = await this.getPool();
+    const res = await pool.query(
       `UPDATE titles SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
       [titleId, userId]
     );
     if ((res.rowCount ?? 0) > 0) {
-      await this.pool.query(
+      await pool.query(
         `UPDATE subtasks SET deleted_at = NOW(), updated_at = NOW() WHERE title_id = $1 AND user_id = $2 AND deleted_at IS NULL`,
         [titleId, userId]
       );
@@ -303,15 +314,16 @@ export class PostgresDatabase implements IDatabase {
   }
 
   // SUBTASKS
-  async getSubtasks(userId: string, filter: FilterSubtasksInput = {}): Promise<{ items: Subtask[]; total: number }> {
+  async getSubtasks(userId: string, filter: Partial<FilterSubtasksInput> = {}): Promise<{ items: Subtask[]; total: number }> {
     await this.init();
+    const pool = await this.getPool();
     let conditions: string[] = ['s.user_id = $1', 's.deleted_at IS NULL'];
     let values: any[] = [userId];
     let valIdx = 2;
 
-    if (filter.title_id) {
-      conditions.push(`s.title_id = $${valIdx++}`);
-      values.push(filter.title_id);
+    if (filter.title_ids && filter.title_ids.length > 0) {
+      conditions.push(`s.title_id = ANY($${valIdx++})`);
+      values.push(filter.title_ids);
     }
 
     if (filter.status) {
@@ -319,21 +331,21 @@ export class PostgresDatabase implements IDatabase {
       values.push(filter.status);
     }
 
-    if (filter.preset) {
-      const { startDate, endDate } = getDateRangeFromPreset(filter.preset);
+    let startDate = filter.start_date;
+    let endDate = filter.end_date;
+    if (filter.date_preset) {
+      const presetRange = getDateRangeFromPreset(filter.date_preset);
+      startDate = presetRange.startDate;
+      endDate = presetRange.endDate;
+    }
+
+    if (startDate) {
       conditions.push(`s.entry_date >= $${valIdx++}`);
       values.push(startDate);
+    }
+    if (endDate) {
       conditions.push(`s.entry_date <= $${valIdx++}`);
       values.push(endDate);
-    } else {
-      if (filter.start_date) {
-        conditions.push(`s.entry_date >= $${valIdx++}`);
-        values.push(filter.start_date);
-      }
-      if (filter.end_date) {
-        conditions.push(`s.entry_date <= $${valIdx++}`);
-        values.push(filter.end_date);
-      }
     }
 
     if (filter.search) {
@@ -344,12 +356,12 @@ export class PostgresDatabase implements IDatabase {
     const whereClause = conditions.join(' AND ');
 
     // Total count query
-    const countRes = await this.pool.query(`SELECT COUNT(*)::int as total FROM subtasks s WHERE ${whereClause}`, values);
+    const countRes = await pool.query(`SELECT COUNT(*)::int as total FROM subtasks s WHERE ${whereClause}`, values);
     const total = countRes.rows[0]?.total || 0;
 
     // Sorting
-    const sortField = filter.sort_by === 'created_at' ? 's.created_at' : 's.entry_date';
-    const sortOrder = (filter.sort_order || 'desc').toUpperCase();
+    const sortField = filter.sort_by === 'created_at' ? 's.created_at' : filter.sort_by === 'sort_order' ? 's.sort_order' : 's.entry_date';
+    const sortDir = (filter.sort_dir || 'desc').toUpperCase();
 
     // Pagination
     const page = filter.page || 1;
@@ -361,13 +373,13 @@ export class PostgresDatabase implements IDatabase {
       FROM subtasks s
       JOIN titles t ON t.id = s.title_id
       WHERE ${whereClause}
-      ORDER BY ${sortField} ${sortOrder}, s.sort_order ASC
+      ORDER BY ${sortField} ${sortDir}, s.sort_order ASC
       LIMIT $${valIdx++} OFFSET $${valIdx++}
     `;
     values.push(limit, offset);
 
-    const dataRes = await this.pool.query(dataQuery, values);
-    const items: Subtask[] = dataRes.rows.map((row) => ({
+    const dataRes = await pool.query(dataQuery, values);
+    const items: Subtask[] = dataRes.rows.map((row: any): Subtask => ({
       id: row.id,
       title_id: row.title_id,
       user_id: row.user_id,
@@ -375,16 +387,23 @@ export class PostgresDatabase implements IDatabase {
       entry_date: typeof row.entry_date === 'string' ? row.entry_date.split('T')[0] : new Date(row.entry_date).toISOString().split('T')[0],
       status: row.status,
       tags: row.tags || [],
-      cost: row.cost !== null ? parseFloat(row.cost) : undefined,
-      time_spent_minutes: row.time_spent_minutes || undefined,
+      cost: row.cost !== null && row.cost !== undefined ? parseFloat(row.cost) : null,
+      time_spent_minutes: row.time_spent_minutes !== null && row.time_spent_minutes !== undefined ? row.time_spent_minutes : null,
       sort_order: row.sort_order || 0,
       created_at: new Date(row.created_at).toISOString(),
       updated_at: new Date(row.updated_at).toISOString(),
-      deleted_at: row.deleted_at ? new Date(row.deleted_at).toISOString() : undefined,
+      deleted_at: row.deleted_at ? new Date(row.deleted_at).toISOString() : null,
       title: {
         id: row.title_id,
+        user_id: row.user_id,
         name: row.title_name,
-        color: row.title_color
+        color: row.title_color,
+        icon: 'folder',
+        is_archived: false,
+        sort_order: 0,
+        created_at: new Date(row.created_at).toISOString(),
+        updated_at: new Date(row.updated_at).toISOString(),
+        deleted_at: null
       }
     }));
 
@@ -393,7 +412,8 @@ export class PostgresDatabase implements IDatabase {
 
   async getSubtaskById(userId: string, subtaskId: string): Promise<Subtask | null> {
     await this.init();
-    const res = await this.pool.query(
+    const pool = await this.getPool();
+    const res = await pool.query(
       `SELECT s.*, t.name as title_name, t.color as title_color
        FROM subtasks s
        JOIN titles t ON t.id = s.title_id
@@ -410,22 +430,30 @@ export class PostgresDatabase implements IDatabase {
       entry_date: typeof row.entry_date === 'string' ? row.entry_date.split('T')[0] : new Date(row.entry_date).toISOString().split('T')[0],
       status: row.status,
       tags: row.tags || [],
-      cost: row.cost !== null ? parseFloat(row.cost) : undefined,
-      time_spent_minutes: row.time_spent_minutes || undefined,
+      cost: row.cost !== null && row.cost !== undefined ? parseFloat(row.cost) : null,
+      time_spent_minutes: row.time_spent_minutes !== null && row.time_spent_minutes !== undefined ? row.time_spent_minutes : null,
       sort_order: row.sort_order || 0,
       created_at: new Date(row.created_at).toISOString(),
       updated_at: new Date(row.updated_at).toISOString(),
-      deleted_at: row.deleted_at ? new Date(row.deleted_at).toISOString() : undefined,
+      deleted_at: row.deleted_at ? new Date(row.deleted_at).toISOString() : null,
       title: {
         id: row.title_id,
+        user_id: row.user_id,
         name: row.title_name,
-        color: row.title_color
+        color: row.title_color,
+        icon: 'folder',
+        is_archived: false,
+        sort_order: 0,
+        created_at: new Date(row.created_at).toISOString(),
+        updated_at: new Date(row.updated_at).toISOString(),
+        deleted_at: null
       }
     };
   }
 
   async createSubtask(userId: string, input: CreateSubtaskInput): Promise<Subtask> {
     await this.init();
+    const pool = await this.getPool();
     if (!isPastOrToday(input.entry_date)) {
       throw new Error('Future dates are strictly rejected. Entry date must be today or in the past.');
     }
@@ -436,7 +464,7 @@ export class PostgresDatabase implements IDatabase {
     }
 
     const id = uuidv4();
-    const res = await this.pool.query(
+    const res = await pool.query(
       `INSERT INTO subtasks (id, title_id, user_id, description, entry_date, status, tags, cost, time_spent_minutes, sort_order, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
        RETURNING *`,
@@ -463,21 +491,30 @@ export class PostgresDatabase implements IDatabase {
       entry_date: typeof row.entry_date === 'string' ? row.entry_date.split('T')[0] : new Date(row.entry_date).toISOString().split('T')[0],
       status: row.status,
       tags: row.tags || [],
-      cost: row.cost !== null ? parseFloat(row.cost) : undefined,
-      time_spent_minutes: row.time_spent_minutes || undefined,
+      cost: row.cost !== null && row.cost !== undefined ? parseFloat(row.cost) : null,
+      time_spent_minutes: row.time_spent_minutes !== null && row.time_spent_minutes !== undefined ? row.time_spent_minutes : null,
       sort_order: row.sort_order || 0,
       created_at: new Date(row.created_at).toISOString(),
       updated_at: new Date(row.updated_at).toISOString(),
+      deleted_at: null,
       title: {
         id: title.id,
+        user_id: title.user_id,
         name: title.name,
-        color: title.color
+        color: title.color,
+        icon: title.icon,
+        is_archived: title.is_archived,
+        sort_order: title.sort_order,
+        created_at: title.created_at,
+        updated_at: title.updated_at,
+        deleted_at: null
       }
     };
   }
 
   async updateSubtask(userId: string, subtaskId: string, input: UpdateSubtaskInput): Promise<Subtask | null> {
     await this.init();
+    const pool = await this.getPool();
     const existing = await this.getSubtaskById(userId, subtaskId);
     if (!existing) return null;
 
@@ -525,13 +562,14 @@ export class PostgresDatabase implements IDatabase {
     }
 
     const query = `UPDATE subtasks SET ${updates.join(', ')} WHERE id = $1 AND user_id = $2 RETURNING *`;
-    await this.pool.query(query, values);
+    await pool.query(query, values);
     return this.getSubtaskById(userId, subtaskId);
   }
 
   async deleteSubtask(userId: string, subtaskId: string): Promise<boolean> {
     await this.init();
-    const res = await this.pool.query(
+    const pool = await this.getPool();
+    const res = await pool.query(
       `UPDATE subtasks SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
       [subtaskId, userId]
     );
@@ -540,8 +578,9 @@ export class PostgresDatabase implements IDatabase {
 
   async bulkDeleteSubtasks(userId: string, ids: string[]): Promise<number> {
     await this.init();
+    const pool = await this.getPool();
     if (!ids.length) return 0;
-    const res = await this.pool.query(
+    const res = await pool.query(
       `UPDATE subtasks SET deleted_at = NOW(), updated_at = NOW() WHERE id = ANY($1) AND user_id = $2 AND deleted_at IS NULL`,
       [ids, userId]
     );
@@ -550,8 +589,9 @@ export class PostgresDatabase implements IDatabase {
 
   async reorderSubtasks(userId: string, _titleId: string, orderedIds: string[]): Promise<boolean> {
     await this.init();
+    const pool = await this.getPool();
     for (let i = 0; i < orderedIds.length; i++) {
-      await this.pool.query(
+      await pool.query(
         `UPDATE subtasks SET sort_order = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3`,
         [i, orderedIds[i], userId]
       );
@@ -568,8 +608,9 @@ export class PostgresDatabase implements IDatabase {
     details: Record<string, any>
   ): Promise<AuditLog> {
     await this.init();
+    const pool = await this.getPool();
     const id = uuidv4();
-    const res = await this.pool.query(
+    const res = await pool.query(
       `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, details, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, NOW())
        RETURNING *`,
@@ -589,11 +630,12 @@ export class PostgresDatabase implements IDatabase {
 
   async getAuditLogs(userId: string, limit = 50): Promise<AuditLog[]> {
     await this.init();
-    const res = await this.pool.query(
+    const pool = await this.getPool();
+    const res = await pool.query(
       `SELECT * FROM audit_logs WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2`,
       [userId, limit]
     );
-    return res.rows.map((row) => ({
+    return res.rows.map((row: any): AuditLog => ({
       id: row.id,
       user_id: row.user_id,
       action: row.action,

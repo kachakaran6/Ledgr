@@ -141,7 +141,7 @@ export function buildServer(): FastifyInstance {
         });
       }
 
-      const rawPath = request.url.split('?')[0];
+      const rawPath = request.url ? request.url.split('?')[0] || '/' : '/';
       const safePath = path.normalize(rawPath).replace(/^(\.\.[\/\\])+/, '');
       const requestedFile = path.join(staticDir, safePath);
 
