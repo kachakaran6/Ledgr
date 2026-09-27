@@ -88,14 +88,15 @@ export const App: React.FC = () => {
     queryFn: async () => {
       try {
         const serverTitles = await api.getTitles();
-        if (serverTitles) {
+        if (serverTitles && Array.isArray(serverTitles)) {
           await localDb.titles.bulkPut(serverTitles);
           return serverTitles;
         }
       } catch {
         // Fallback to local Dexie
       }
-      return localDb.titles.where('is_archived').equals(0).toArray();
+      const allLocal = await localDb.titles.toArray();
+      return allLocal.filter((t) => !t.is_archived && !t.deleted_at && (!user?.id || t.user_id === user.id));
     },
     enabled: !!user && !!api.getToken(),
   });
@@ -104,6 +105,7 @@ export const App: React.FC = () => {
   const { data: subtasksData, isLoading } = useQuery<{ items: Subtask[]; total: number }>({
     queryKey: ['subtasks', user?.id, selectedTitleId, searchQuery, datePreset, customStartDate, customEndDate, statusFilter],
     queryFn: async () => {
+      let items: Subtask[] = [];
       try {
         const serverData = await api.getSubtasks({
           title_ids: selectedTitleId ? [selectedTitleId] : undefined,
@@ -114,51 +116,55 @@ export const App: React.FC = () => {
           status: statusFilter,
           limit: 1000,
         });
-        if (serverData.items) {
+        if (serverData && Array.isArray(serverData.items)) {
           await localDb.subtasks.bulkPut(serverData.items);
-          return serverData;
+          items = serverData.items;
         }
       } catch {
         // Fallback to Dexie
       }
 
-      // Local Dexie query & filter
-      let localItems = await localDb.subtasks.toArray();
+      if (items.length === 0) {
+        // Local Dexie query & filter
+        let localItems = await localDb.subtasks.toArray();
+        localItems = localItems.filter((s) => !s.deleted_at && (!user?.id || s.user_id === user.id));
+
+        if (selectedTitleId) {
+          localItems = localItems.filter((s) => s.title_id === selectedTitleId);
+        }
+
+        if (statusFilter) {
+          localItems = localItems.filter((s) => s.status === statusFilter);
+        }
+
+        // Date preset filtering
+        const { startDate, endDate } = datePreset !== 'all' && datePreset !== 'custom'
+          ? getDateRangeFromPreset(datePreset)
+          : { startDate: customStartDate, endDate: customEndDate };
+        if (startDate) localItems = localItems.filter((s) => s.entry_date >= startDate);
+        if (endDate) localItems = localItems.filter((s) => s.entry_date <= endDate);
+
+        // Search text filtering
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase().trim();
+          localItems = localItems.filter(
+            (s) =>
+              s.description.toLowerCase().includes(q) ||
+              s.tags.some((t) => t.toLowerCase().includes(q))
+          );
+        }
+
+        items = localItems;
+      }
 
       // Attach title object
       const titleMap = new Map(titles.map((t) => [t.id, t]));
-      localItems = localItems.map((s) => ({ ...s, title: titleMap.get(s.title_id) }));
-
-      if (selectedTitleId) {
-        localItems = localItems.filter((s) => s.title_id === selectedTitleId);
-      }
-
-      if (statusFilter) {
-        localItems = localItems.filter((s) => s.status === statusFilter);
-      }
-
-      // Date preset filtering
-      const { startDate, endDate } = datePreset !== 'all' && datePreset !== 'custom'
-        ? getDateRangeFromPreset(datePreset)
-        : { startDate: customStartDate, endDate: customEndDate };
-      if (startDate) localItems = localItems.filter((s) => s.entry_date >= startDate);
-      if (endDate) localItems = localItems.filter((s) => s.entry_date <= endDate);
-
-      // Search text filtering
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        localItems = localItems.filter(
-          (s) =>
-            s.description.toLowerCase().includes(q) ||
-            s.title?.name.toLowerCase().includes(q) ||
-            s.tags.some((t) => t.toLowerCase().includes(q))
-        );
-      }
+      items = items.map((s) => ({ ...s, title: s.title || titleMap.get(s.title_id) }));
 
       // Sort newest-first
-      localItems.sort((a, b) => b.entry_date.localeCompare(a.entry_date));
+      items.sort((a, b) => b.entry_date.localeCompare(a.entry_date) || (b.created_at || '').localeCompare(a.created_at || ''));
 
-      return { items: localItems, total: localItems.length };
+      return { items, total: items.length };
     },
     enabled: !!user && !!api.getToken(),
   });
@@ -174,39 +180,59 @@ export const App: React.FC = () => {
   // Mutations
   const saveSubtaskMutation = useMutation({
     mutationFn: async (input: CreateSubtaskInput) => {
+      let saved: Subtask;
       if (editingSubtask) {
-        const updated = { ...editingSubtask, ...input, updated_at: new Date().toISOString() };
-        await localDb.subtasks.put(updated as Subtask);
-        await syncEngine.queueMutation('UPDATE_SUBTASK', editingSubtask.id, input);
+        try {
+          saved = await api.updateSubtask(editingSubtask.id, input);
+          await localDb.subtasks.put(saved);
+        } catch {
+          saved = { ...editingSubtask, ...input, updated_at: new Date().toISOString() };
+          await localDb.subtasks.put(saved);
+          await syncEngine.queueMutation('UPDATE_SUBTASK', editingSubtask.id, input);
+        }
       } else {
-        const newId = crypto.randomUUID();
-        const created: Subtask = {
-          id: newId,
-          user_id: user?.id || '',
-          title_id: input.title_id,
-          description: input.description,
-          entry_date: input.entry_date,
-          status: input.status || 'done',
-          tags: input.tags || [],
-          cost: input.cost ?? null,
-          time_spent_minutes: input.time_spent_minutes ?? null,
-          sort_order: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          deleted_at: null,
-        };
-        await localDb.subtasks.add(created);
-        await syncEngine.queueMutation('CREATE_SUBTASK', newId, input);
+        try {
+          saved = await api.createSubtask(input);
+          await localDb.subtasks.put(saved);
+        } catch {
+          const newId = crypto.randomUUID();
+          saved = {
+            id: newId,
+            user_id: user?.id || '',
+            title_id: input.title_id,
+            description: input.description,
+            entry_date: input.entry_date,
+            status: input.status || 'done',
+            tags: input.tags || [],
+            cost: input.cost ?? null,
+            time_spent_minutes: input.time_spent_minutes ?? null,
+            sort_order: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            deleted_at: null,
+          };
+          await localDb.subtasks.add(saved);
+          await syncEngine.queueMutation('CREATE_SUBTASK', newId, input);
+        }
       }
+      return saved;
     },
-    onSuccess: () => {
+    onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ['subtasks'] });
       queryClient.invalidateQueries({ queryKey: ['titles'] });
+      if (saved && selectedTitleId && saved.title_id !== selectedTitleId) {
+        setSelectedTitleId(null);
+      }
     },
   });
 
   const deleteSubtaskMutation = useMutation({
     mutationFn: async (id: string) => {
+      try {
+        await api.deleteSubtask(id);
+      } catch {
+        // Fallback
+      }
       await localDb.subtasks.delete(id);
       await syncEngine.queueMutation('DELETE_SUBTASK', id, {});
     },
@@ -218,30 +244,45 @@ export const App: React.FC = () => {
 
   const saveTitleMutation = useMutation({
     mutationFn: async (input: CreateTitleInput) => {
+      let saved: Title;
       if (editingTitle) {
-        const updated = { ...editingTitle, ...input, updated_at: new Date().toISOString() };
-        await localDb.titles.put(updated as Title);
-        await syncEngine.queueMutation('UPDATE_TITLE', editingTitle.id, input);
+        try {
+          saved = await api.updateTitle(editingTitle.id, input);
+          await localDb.titles.put(saved);
+        } catch {
+          saved = { ...editingTitle, ...input, updated_at: new Date().toISOString() };
+          await localDb.titles.put(saved);
+          await syncEngine.queueMutation('UPDATE_TITLE', editingTitle.id, input);
+        }
       } else {
-        const newId = crypto.randomUUID();
-        const created: Title = {
-          id: newId,
-          user_id: user?.id || '',
-          name: input.name,
-          color: input.color || '#0d9488',
-          icon: input.icon || 'folder',
-          is_archived: false,
-          sort_order: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          deleted_at: null,
-        };
-        await localDb.titles.add(created);
-        await syncEngine.queueMutation('CREATE_TITLE', newId, input);
+        try {
+          saved = await api.createTitle(input);
+          await localDb.titles.put(saved);
+        } catch {
+          const newId = crypto.randomUUID();
+          saved = {
+            id: newId,
+            user_id: user?.id || '',
+            name: input.name,
+            color: input.color || '#0d9488',
+            icon: input.icon || 'folder',
+            is_archived: false,
+            sort_order: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            deleted_at: null,
+          };
+          await localDb.titles.add(saved);
+          await syncEngine.queueMutation('CREATE_TITLE', newId, input);
+        }
       }
+      return saved;
     },
-    onSuccess: () => {
+    onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ['titles'] });
+      if (saved?.id) {
+        setSelectedTitleId(saved.id);
+      }
     },
   });
 
