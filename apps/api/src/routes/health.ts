@@ -19,16 +19,23 @@ function calculatePercentile(p: number): number {
 }
 
 export const healthRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/health', async () => {
-    return {
-      status: 'healthy',
-      service: 'logpast-api',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime()
-    };
+  const handleHealth = async () => ({
+    status: 'healthy',
+    service: 'logpast-api',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
   });
 
+  fastify.get('/health', handleHealth);
+  fastify.get('/api/health', handleHealth);
+
   fastify.get('/health/ready', async () => {
+    return {
+      status: 'ready',
+      timestamp: new Date().toISOString()
+    };
+  });
+  fastify.get('/api/health/ready', async () => {
     return {
       status: 'ready',
       timestamp: new Date().toISOString()
