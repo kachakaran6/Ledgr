@@ -10,6 +10,7 @@ import {
   CheckIcon,
   EditIcon,
   TrashIcon,
+  FileTextIcon,
 } from './icons';
 import { useUI } from '../context/UIContext';
 import { Input } from './ui/input';
@@ -68,6 +69,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     setCustomEndDate,
     clearAllFilters,
     hasActiveFilters,
+    setIsExportOpen,
   } = useUI();
 
   const [deletingTitleId, setDeletingTitleId] = React.useState<string | null>(null);
@@ -304,6 +306,18 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           <span className="font-mono tabular-nums text-[11px] text-muted-foreground whitespace-nowrap hidden lg:inline px-1">
             {filteredCount} of {totalCount}
           </span>
+
+          {/* Export Report Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsExportOpen(true)}
+            className="h-9 px-2.5 sm:px-3 text-xs gap-1.5 font-medium shrink-0 border-border"
+            title="Export PDF / Excel report"
+          >
+            <FileTextIcon className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="hidden xs:inline">Export</span>
+          </Button>
 
           {/* 4. Desktop "+ Log Entry" Button */}
           <Button

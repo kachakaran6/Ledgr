@@ -277,9 +277,10 @@ export const App: React.FC = () => {
   const totalCount = subtasksData?.total || 0;
 
   // Selected subtasks for export
+  const allAvailableSubtasks = subtasks.length > 0 ? subtasks : allUserSubtasks;
   const selectedSubtasksForExport = selectedSubtaskIds.size > 0
-    ? subtasks.filter((s) => selectedSubtaskIds.has(s.id))
-    : subtasks;
+    ? (allUserSubtasks.length > 0 ? allUserSubtasks : subtasks).filter((s) => selectedSubtaskIds.has(s.id))
+    : (activeTaskId ? activeTaskSubtasks : allAvailableSubtasks);
 
   // Rollback toast state for optimistic UI failures
   const [rollbackToast, setRollbackToast] = useState<string | null>(null);

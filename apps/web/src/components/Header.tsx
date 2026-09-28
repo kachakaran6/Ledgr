@@ -10,6 +10,7 @@ import {
   CheckSquareIcon,
   SquareIcon,
   RefreshCwIcon,
+  FileTextIcon,
 } from './icons';
 import { useAuth } from '../context/AuthContext';
 import { useUI } from '../context/UIContext';
@@ -35,6 +36,7 @@ export const Header: React.FC = () => {
     clearSelectedSubtasks,
     setIsShortcutsOpen,
     setIsAuthOpen,
+    setIsExportOpen,
   } = useUI();
   const { status, pendingCount, flush } = useSyncStatus();
 
@@ -86,7 +88,7 @@ export const Header: React.FC = () => {
 
           <Separator orientation="vertical" className="h-4" />
 
-          {/* Select Mode Toggle (hidden on mobile to prevent overflow) */}
+          {/* Select Mode Toggle */}
           <Button
             variant={isSelectionMode ? 'default' : 'ghost'}
             size="sm"
@@ -94,14 +96,15 @@ export const Header: React.FC = () => {
               setIsSelectionMode(!isSelectionMode);
               if (isSelectionMode) clearSelectedSubtasks();
             }}
-            className="hidden sm:inline-flex h-7 px-2.5 text-xs gap-1.5 font-medium"
+            className="h-8 px-2 sm:px-2.5 text-xs gap-1.5 font-medium"
+            title={isSelectionMode ? 'Done Selecting' : 'Select records for export'}
           >
             {isSelectionMode ? (
               <CheckSquareIcon className="h-3.5 w-3.5" />
             ) : (
               <SquareIcon className="h-3.5 w-3.5" />
             )}
-            <span>{isSelectionMode ? 'Done Selecting' : 'Select'}</span>
+            <span>{isSelectionMode ? 'Done' : 'Select'}</span>
           </Button>
 
           {/* Theme Toggle */}
@@ -146,23 +149,27 @@ export const Header: React.FC = () => {
                 </p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setIsShortcutsOpen(true)} className="gap-2 text-xs">
+              <DropdownMenuItem onClick={() => setIsExportOpen(true)} className="gap-2 text-xs font-medium cursor-pointer">
+                <FileTextIcon className="h-3.5 w-3.5 text-foreground" />
+                <span>Export Report (PDF / Excel)</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsShortcutsOpen(true)} className="gap-2 text-xs cursor-pointer">
                 <HelpCircleIcon className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>Shortcuts (?)</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsAuthOpen(true)} className="gap-2 text-xs">
+              <DropdownMenuItem onClick={() => setIsAuthOpen(true)} className="gap-2 text-xs cursor-pointer">
                 <UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>Switch Account</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={deleteAccount}
-                className="gap-2 text-xs text-destructive focus:text-destructive"
+                className="gap-2 text-xs text-destructive focus:text-destructive cursor-pointer"
               >
                 <TrashIcon className="h-3.5 w-3.5" />
                 <span>Delete Account</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout} className="gap-2 text-xs">
+              <DropdownMenuItem onClick={logout} className="gap-2 text-xs cursor-pointer">
                 <LogOutIcon className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>Log Out</span>
               </DropdownMenuItem>
