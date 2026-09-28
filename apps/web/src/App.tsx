@@ -25,6 +25,7 @@ export const App: React.FC = () => {
   const { user, isLoading: isAuthLoading } = useAuth();
   const {
     selectedTitleId,
+    setSelectedTitleId,
     searchQuery,
     datePreset,
     customStartDate,
