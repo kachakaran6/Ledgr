@@ -129,7 +129,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
     <div className="p-4 sm:p-6 space-y-6">
       {/* Selection Mode Bulk Toolbar */}
       {isSelectionMode && (
-        <div className="sticky top-14 z-20 flex items-center justify-between p-2.5 rounded-lg bg-primary/10 border border-primary/20 text-xs font-medium text-foreground backdrop-blur-md">
+        <div className="sticky top-0 z-20 flex items-center justify-between p-2.5 rounded-lg bg-primary/10 border border-primary/20 text-xs font-medium text-foreground backdrop-blur-md mb-3">
           <div className="flex items-center gap-2">
             <Button
               variant="default"
@@ -156,9 +156,9 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
 
       {/* Date Groups */}
       {groupedByDate.map((group) => (
-        <section key={group.date} className="space-y-2">
+        <section key={group.date} className="space-y-3">
           {/* Sticky Date Header */}
-          <div className="sticky top-14 sm:top-[60px] z-10 py-1.5 flex items-center justify-between bg-background/95 backdrop-blur-sm border-b border-border/60">
+          <div className="sticky top-0 z-10 py-1.5 -mx-4 sm:-mx-6 px-4 sm:px-6 flex items-center justify-between bg-background/95 backdrop-blur-sm border-b border-border/60">
             <div className="flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-primary" />
               <h3 className="text-xs font-bold tracking-tight text-foreground uppercase">
