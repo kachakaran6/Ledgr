@@ -6,7 +6,6 @@ import {
   HelpCircleIcon,
   UserIcon,
   LogOutIcon,
-  DownloadIcon,
   TrashIcon,
   CheckSquareIcon,
   SquareIcon,
@@ -27,7 +26,7 @@ import {
 } from './ui/dropdown-menu';
 
 export const Header: React.FC = () => {
-  const { user, logout, exportAllData, deleteAccount } = useAuth();
+  const { user, logout, deleteAccount } = useAuth();
   const {
     theme,
     toggleTheme,
@@ -150,10 +149,6 @@ export const Header: React.FC = () => {
               <DropdownMenuItem onClick={() => setIsShortcutsOpen(true)} className="gap-2 text-xs">
                 <HelpCircleIcon className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>Shortcuts (?)</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportAllData} className="gap-2 text-xs">
-                <DownloadIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                <span>Export Account Data</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setIsAuthOpen(true)} className="gap-2 text-xs">
                 <UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
