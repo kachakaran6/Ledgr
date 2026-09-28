@@ -8,7 +8,7 @@
  */
 
 import confetti from 'canvas-confetti';
-import { api, ApiError } from './api';
+import { api } from './api';
 import type { Subtask, ExportFormat } from '@ledgr/shared';
 
 export interface ExportOptions {

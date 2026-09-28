@@ -410,7 +410,7 @@ export class ExportService {
   // ─── Excel Generation ───────────────────────────────────────────────────────
 
   static async generateExcel(userId: string, input: ExportRequestInput): Promise<{ buffer: Buffer; filename: string }> {
-    const { subtasks, userName, generatedAt, filename, dateRange, titleNames } = await this.getExportData(userId, input);
+    const { subtasks, generatedAt, filename, dateRange, titleNames } = await this.getExportData(userId, input);
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Ledgr';
