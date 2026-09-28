@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon, DownloadIcon } from './components/icons';
 import { Header } from './components/Header';
 import { FilterBar } from './components/FilterBar';
-import { TitleSidebar } from './components/TitleSidebar';
 import { SubtaskList } from './components/SubtaskList';
 import { AddSubtaskModal } from './components/AddSubtaskModal';
 import { AddTitleModal } from './components/AddTitleModal';
@@ -299,16 +298,6 @@ export const App: React.FC = () => {
     },
   });
 
-  const archiveTitleMutation = useMutation({
-    mutationFn: async ({ id, isArchived }: { id: string; isArchived: boolean }) => {
-      await localDb.titles.update(id, { is_archived: isArchived });
-      await syncEngine.queueMutation('UPDATE_TITLE', id, { is_archived: isArchived });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['titles'] });
-    },
-  });
-
   // Enforce Mandatory Authentication (AuthGate)
   if (!user && !isAuthLoading) {
     return <AuthGate />;
@@ -319,43 +308,42 @@ export const App: React.FC = () => {
       {/* Header */}
       <Header />
 
-      {/* Filter & Search Bar */}
-      <FilterBar totalCount={totalCount} filteredCount={subtasks.length} />
+      {/* Unified Filter Bar: [Title] [Date Range] [Search] [+ Log] */}
+      <FilterBar
+        titles={titles}
+        totalCount={totalCount}
+        filteredCount={subtasks.length}
+        onAddTitle={() => {
+          setEditingTitle(null);
+          setIsAddTitleOpen(true);
+        }}
+        onEditTitle={(title) => {
+          setEditingTitle(title);
+          setIsAddTitleOpen(true);
+        }}
+        onDeleteTitle={(id) => deleteTitleMutation.mutate(id)}
+        onOpenAddSubtask={() => {
+          setEditingSubtask(null);
+          setIsAddSubtaskOpen(true);
+        }}
+      />
 
-      {/* Main Two-Pane Split Layout */}
-      <div className="flex-1 max-w-7xl w-full mx-auto flex flex-col lg:flex-row overflow-hidden">
-        {/* Left Titles Sidebar */}
-        <TitleSidebar
-          titles={titles}
-          onAddTitle={() => {
-            setEditingTitle(null);
-            setIsAddTitleOpen(true);
+      {/* Main Single-Pane Log Feed */}
+      <main className="flex-1 overflow-y-auto bg-background">
+        <SubtaskList
+          subtasks={subtasks}
+          isLoading={isLoading}
+          onEditSubtask={(subtask) => {
+            setEditingSubtask(subtask);
+            setIsAddSubtaskOpen(true);
           }}
-          onEditTitle={(title) => {
-            setEditingTitle(title);
-            setIsAddTitleOpen(true);
+          onDeleteSubtask={(id) => deleteSubtaskMutation.mutate(id)}
+          onOpenAddModal={() => {
+            setEditingSubtask(null);
+            setIsAddSubtaskOpen(true);
           }}
-          onDeleteTitle={(id) => deleteTitleMutation.mutate(id)}
-          onArchiveTitle={(id, isArchived) => archiveTitleMutation.mutate({ id, isArchived })}
         />
-
-        {/* Right Subtask Feed */}
-        <main className="flex-1 overflow-y-auto bg-background">
-          <SubtaskList
-            subtasks={subtasks}
-            isLoading={isLoading}
-            onEditSubtask={(subtask) => {
-              setEditingSubtask(subtask);
-              setIsAddSubtaskOpen(true);
-            }}
-            onDeleteSubtask={(id) => deleteSubtaskMutation.mutate(id)}
-            onOpenAddModal={() => {
-              setEditingSubtask(null);
-              setIsAddSubtaskOpen(true);
-            }}
-          />
-        </main>
-      </div>
+      </main>
 
       {/* Mobile Floating Action Button (+) */}
       <div className="fixed bottom-6 right-6 z-30 flex items-center gap-2 sm:hidden">
@@ -365,8 +353,8 @@ export const App: React.FC = () => {
             setEditingSubtask(null);
             setIsAddSubtaskOpen(true);
           }}
-          className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl flex items-center justify-center transition-transform active:scale-95"
-          title="Log Past Task"
+          className="h-12 w-12 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg flex items-center justify-center transition-transform active:scale-95"
+          title="Log Past Work"
         >
           <PlusIcon className="h-6 w-6" />
         </button>

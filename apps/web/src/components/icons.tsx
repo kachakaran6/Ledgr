@@ -393,3 +393,25 @@ export const EyeOff: React.FC<IconProps> = ({ className = 'h-5 w-5', ...props })
 );
 export const EyeOffIcon = EyeOff;
 
+export const ChevronDown: React.FC<IconProps> = ({ className = 'h-5 w-5', ...props }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+export const ChevronDownIcon = ChevronDown;
+
+export const ChevronUp: React.FC<IconProps> = ({ className = 'h-5 w-5', ...props }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <polyline points="18 15 12 9 6 15" />
+  </svg>
+);
+export const ChevronUpIcon = ChevronUp;
+
+export const Check: React.FC<IconProps> = ({ className = 'h-5 w-5', ...props }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+export const CheckIcon = Check;
+
+

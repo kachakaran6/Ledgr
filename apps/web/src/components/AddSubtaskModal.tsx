@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   CalendarIcon,
-  ClockIcon,
-  DollarSignIcon,
   CheckCircle2Icon,
   AlertTriangleIcon,
   PlusIcon,
+  ClockIcon,
+  DollarSignIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from './icons';
 import { getTodayDateString, getYesterdayDateString, isPastOrToday } from '@ledgr/shared';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
@@ -40,6 +42,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
   const [description, setDescription] = useState<string>('');
   const [entryDate, setEntryDate] = useState<string>(today);
   const [status, setStatus] = useState<SubtaskStatus>('done');
+  const [showExtraFields, setShowExtraFields] = useState<boolean>(false);
   const [tagInput, setTagInput] = useState<string>('');
   const [tags, setTags] = useState<string[]>([]);
   const [cost, setCost] = useState<string>('');
@@ -54,10 +57,21 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
       setTitleId(editingSubtask.title_id);
       setDescription(editingSubtask.description);
       setEntryDate(editingSubtask.entry_date);
-      setStatus(editingSubtask.status);
+      setStatus(editingSubtask.status || 'done');
       setTags(editingSubtask.tags || []);
       setCost(editingSubtask.cost != null ? String(editingSubtask.cost) : '');
-      setTimeSpent(editingSubtask.time_spent_minutes != null ? String(editingSubtask.time_spent_minutes) : '');
+      setTimeSpent(
+        editingSubtask.time_spent_minutes != null
+          ? String(editingSubtask.time_spent_minutes)
+          : ''
+      );
+      if (
+        (editingSubtask.tags && editingSubtask.tags.length > 0) ||
+        editingSubtask.cost != null ||
+        editingSubtask.time_spent_minutes != null
+      ) {
+        setShowExtraFields(true);
+      }
     } else {
       setTitleId(selectedTitleId || titles[0]?.id || '');
       setDescription('');
@@ -66,6 +80,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
       setTags([]);
       setCost('');
       setTimeSpent('');
+      setShowExtraFields(false);
     }
     setError(null);
   }, [editingSubtask, selectedTitleId, titles, isOpen]);
@@ -93,12 +108,12 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
     setError(null);
 
     if (!titleId) {
-      setError('Please select or create a title category.');
+      setError('Please select or create a Title category.');
       return;
     }
 
     if (!description.trim()) {
-      setError('Please enter a task description.');
+      setError('Please enter a description.');
       return;
     }
 
@@ -122,7 +137,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
       });
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Failed to save subtask record');
+      setError(err.message || 'Failed to save entry');
     } finally {
       setIsSubmitting(false);
     }
@@ -130,28 +145,28 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="w-full max-w-lg">
+      <DialogContent className="w-full max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {editingSubtask ? 'Edit Work Record' : 'Log Past Work Entry'}
+          <DialogTitle className="text-base font-bold">
+            {editingSubtask ? 'Edit Log Entry' : 'Log Past Work'}
           </DialogTitle>
-          <DialogDescription>
-            Record completed work with strict past-date verification
+          <DialogDescription className="text-xs">
+            Fast, reliable logging for today or past dates
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3.5 pt-1">
           {error && (
             <div className="p-2.5 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive flex items-center gap-2 font-medium">
-              <AlertTriangleIcon className="h-4 w-4 flex-shrink-0" />
+              <AlertTriangleIcon className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
-          {/* Title Category Selection */}
+          {/* 1. Title / Category Selection */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-foreground">
+              <label className="text-xs font-semibold text-foreground">
                 Category / Title
               </label>
               {onCreateTitlePrompt && (
@@ -169,7 +184,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
               <select
                 value={titleId}
                 onChange={(e) => setTitleId(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs sm:text-sm shadow-sm transition-colors text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs sm:text-sm shadow-xs transition-colors text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 {titles.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -195,28 +210,28 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
             )}
           </div>
 
-          {/* Description Field */}
+          {/* 2. Description Field */}
           <div className="space-y-1">
-            <label className="text-xs font-medium text-foreground">
-              What was completed? (Required)
+            <label className="text-xs font-semibold text-foreground">
+              Description
             </label>
             <textarea
               ref={descInputRef}
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g., Repaired brake caliper and bled hydraulic lines"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs sm:text-sm shadow-sm transition-colors text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+              placeholder="What did you work on? (e.g. Completed clutch overhaul, inspected wiring)"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs sm:text-sm shadow-xs transition-colors text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
               required
             />
           </div>
 
-          {/* Date Picker + Quick One-Tap Toggles */}
+          {/* 3. Date Picker with Today & Yesterday Shortcuts */}
           <div className="space-y-1">
-            <label className="text-xs font-medium text-foreground">
-              Completion Date (Past Only)
+            <label className="text-xs font-semibold text-foreground">
+              Date (Past or Today)
             </label>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
@@ -229,141 +244,131 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
                 />
               </div>
 
-              {/* Quick Today / Yesterday Toggles */}
-              <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-                <Button
-                  type="button"
-                  variant={entryDate === today ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setEntryDate(today)}
-                  className="h-9 px-3 text-xs"
-                >
-                  Today
-                </Button>
-                <Button
-                  type="button"
-                  variant={entryDate === yesterday ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setEntryDate(yesterday)}
-                  className="h-9 px-3 text-xs"
-                >
-                  Yesterday
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Status Selection */}
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-foreground">
-              Status
-            </label>
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-              {(['done', 'in_progress', 'cancelled'] as SubtaskStatus[]).map((s) => (
-                <Button
-                  type="button"
-                  key={s}
-                  variant={status === s ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatus(s)}
-                  className="h-8 capitalize text-xs px-1 sm:px-3 truncate"
-                >
-                  {s.replace('_', ' ')}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Tags */}
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-foreground">
-              Tags (Optional)
-            </label>
-            <div className="flex items-center gap-1.5">
-              <Input
-                type="text"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddTag();
-                  }
-                }}
-                placeholder="e.g. brakes, fleet-a"
-                className="h-8 text-xs flex-1"
-              />
               <Button
                 type="button"
-                variant="secondary"
+                variant={entryDate === today ? 'default' : 'outline'}
                 size="sm"
-                onClick={handleAddTag}
-                className="h-8 px-3 text-xs flex-shrink-0"
+                onClick={() => setEntryDate(today)}
+                className="h-9 px-3 text-xs shrink-0"
               >
-                Add
+                Today
+              </Button>
+              <Button
+                type="button"
+                variant={entryDate === yesterday ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setEntryDate(yesterday)}
+                className="h-9 px-3 text-xs shrink-0"
+              >
+                Yesterday
               </Button>
             </div>
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1 max-h-20 overflow-y-auto">
-                {tags.map((t) => (
-                  <Badge
-                    key={t}
-                    variant="secondary"
-                    className="text-xs gap-1 pr-1.5 py-0.5"
-                  >
-                    <span>{t}</span>
-                    <button
+          </div>
+
+          {/* Optional Extra Fields Accordion */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setShowExtraFields(!showExtraFields)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium py-1"
+            >
+              {showExtraFields ? (
+                <ChevronUpIcon className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDownIcon className="h-3.5 w-3.5" />
+              )}
+              <span>{showExtraFields ? 'Hide extra fields' : 'Add tags, cost, or time (optional)'}</span>
+            </button>
+
+            {showExtraFields && (
+              <div className="space-y-3 pt-2 pb-1 border-t border-border mt-1">
+                {/* Tags */}
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Tags</label>
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      type="text"
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddTag();
+                        }
+                      }}
+                      placeholder="Add tag and press Enter"
+                      className="h-8 text-xs flex-1"
+                    />
+                    <Button
                       type="button"
-                      onClick={() => handleRemoveTag(t)}
-                      className="hover:text-destructive ml-0.5 text-xs font-bold leading-none"
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleAddTag}
+                      className="h-8 px-2.5 text-xs shrink-0"
                     >
-                      &times;
-                    </button>
-                  </Badge>
-                ))}
+                      Add
+                    </Button>
+                  </div>
+                  {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {tags.map((t) => (
+                        <Badge
+                          key={t}
+                          variant="secondary"
+                          className="text-[11px] gap-1 pr-1.5 py-0"
+                        >
+                          <span>{t}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTag(t)}
+                            className="hover:text-destructive text-xs font-bold"
+                          >
+                            &times;
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Cost and Time */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Cost ($)</label>
+                    <div className="relative">
+                      <DollarSignIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={cost}
+                        onChange={(e) => setCost(e.target.value)}
+                        placeholder="0.00"
+                        className="pl-7 h-8 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Time (min)</label>
+                    <div className="relative">
+                      <ClockIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                      <Input
+                        type="number"
+                        min="0"
+                        value={timeSpent}
+                        onChange={(e) => setTimeSpent(e.target.value)}
+                        placeholder="30"
+                        className="pl-7 h-8 text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Cost & Time Spent */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-foreground">
-                Cost ($)
-              </label>
-              <div className="relative">
-                <DollarSignIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={cost}
-                  onChange={(e) => setCost(e.target.value)}
-                  placeholder="0.00"
-                  className="pl-8 h-8 text-xs w-full"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-foreground">
-                Time Spent (min)
-              </label>
-              <div className="relative">
-                <ClockIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                <Input
-                  type="number"
-                  min="0"
-                  value={timeSpent}
-                  onChange={(e) => setTimeSpent(e.target.value)}
-                  placeholder="45"
-                  className="pl-8 h-8 text-xs w-full"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Form Actions */}
+          {/* Form Submit Actions */}
           <div className="pt-3 flex items-center justify-end gap-2 border-t border-border">
             <Button
               type="button"
@@ -382,7 +387,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
               className="text-xs gap-1.5 font-medium"
             >
               <CheckCircle2Icon className="h-3.5 w-3.5" />
-              <span>{isSubmitting ? 'Saving...' : editingSubtask ? 'Update Record' : 'Log Record'}</span>
+              <span>{isSubmitting ? 'Saving...' : editingSubtask ? 'Save Changes' : 'Log Entry'}</span>
             </Button>
           </div>
         </form>

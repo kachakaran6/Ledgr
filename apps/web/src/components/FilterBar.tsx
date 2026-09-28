@@ -1,18 +1,40 @@
 import React, { useRef, useEffect } from 'react';
-import { SearchIcon, XIcon, CalendarIcon, RotateCcwIcon } from './icons';
+import {
+  SearchIcon,
+  XIcon,
+  CalendarIcon,
+  RotateCcwIcon,
+  FolderIcon,
+  ChevronDownIcon,
+  PlusIcon,
+  CheckIcon,
+  EditIcon,
+  TrashIcon,
+} from './icons';
 import { useUI } from '../context/UIContext';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
-import type { DatePreset, SubtaskStatus } from '@ledgr/shared';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from './ui/dropdown-menu';
+import type { Title, DatePreset } from '@ledgr/shared';
 
 interface FilterBarProps {
+  titles: Title[];
   totalCount: number;
   filteredCount: number;
+  onAddTitle: () => void;
+  onEditTitle?: (title: Title) => void;
+  onDeleteTitle?: (titleId: string) => void;
+  onOpenAddSubtask: () => void;
 }
 
-const PRESETS: Array<{ id: DatePreset; label: string }> = [
+const PRESET_OPTIONS: Array<{ id: DatePreset; label: string }> = [
   { id: 'all', label: 'All History' },
   { id: 'today', label: 'Today' },
   { id: 'yesterday', label: 'Yesterday' },
@@ -21,15 +43,18 @@ const PRESETS: Array<{ id: DatePreset; label: string }> = [
   { id: 'custom', label: 'Custom Range' },
 ];
 
-const STATUSES: Array<{ id: SubtaskStatus | 'all'; label: string; variant: 'outline' | 'done' | 'inProgress' | 'cancelled' }> = [
-  { id: 'all', label: 'All Status', variant: 'outline' },
-  { id: 'done', label: 'Done', variant: 'done' },
-  { id: 'in_progress', label: 'In Progress', variant: 'inProgress' },
-  { id: 'cancelled', label: 'Cancelled', variant: 'cancelled' },
-];
-
-export const FilterBar: React.FC<FilterBarProps> = ({ totalCount, filteredCount }) => {
+export const FilterBar: React.FC<FilterBarProps> = ({
+  titles,
+  totalCount,
+  filteredCount,
+  onAddTitle,
+  onEditTitle,
+  onDeleteTitle,
+  onOpenAddSubtask,
+}) => {
   const {
+    selectedTitleId,
+    setSelectedTitleId,
     searchQuery,
     setSearchQuery,
     datePreset,
@@ -38,18 +63,21 @@ export const FilterBar: React.FC<FilterBarProps> = ({ totalCount, filteredCount 
     setCustomStartDate,
     customEndDate,
     setCustomEndDate,
-    statusFilter,
-    setStatusFilter,
     clearAllFilters,
     hasActiveFilters,
   } = useUI();
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const todayStr = new Date().toISOString().split('T')[0];
 
   // Global key listener for '/' to focus search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+      if (
+        e.key === '/' &&
+        document.activeElement?.tagName !== 'INPUT' &&
+        document.activeElement?.tagName !== 'TEXTAREA'
+      ) {
         e.preventDefault();
         searchInputRef.current?.focus();
       }
@@ -58,132 +86,235 @@ export const FilterBar: React.FC<FilterBarProps> = ({ totalCount, filteredCount 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const activeTitle = titles.find((t) => t.id === selectedTitleId);
+  const activeDateLabel =
+    PRESET_OPTIONS.find((p) => p.id === datePreset)?.label || 'All History';
 
   return (
-    <div className="w-full bg-card/60 border-b border-border/80 px-4 sm:px-6 py-3 transition-colors">
-      <div className="max-w-7xl mx-auto space-y-3">
-        {/* Search Bar + Live Count Row */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+    <div className="w-full bg-card border-b border-border px-3 sm:px-6 py-2.5 transition-colors shadow-xs">
+      <div className="max-w-5xl mx-auto space-y-2.5">
+        {/* Unified Filter Controls Row: [Title] [Date Range] [Search] [+ Log] */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          {/* 1. Title Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 justify-between gap-2 px-3 text-xs font-medium bg-background shrink-0 min-w-[130px]"
+              >
+                <div className="flex items-center gap-2 truncate">
+                  {activeTitle ? (
+                    <span
+                      className="h-2 w-2 rounded-full shrink-0"
+                      style={{ backgroundColor: activeTitle.color || 'hsl(var(--primary))' }}
+                    />
+                  ) : (
+                    <FolderIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  )}
+                  <span className="truncate">{activeTitle ? activeTitle.name : 'All Titles'}</span>
+                </div>
+                <ChevronDownIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="left" className="w-56">
+              <DropdownMenuItem
+                onClick={() => setSelectedTitleId(null)}
+                className="justify-between text-xs cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <FolderIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>All Titles</span>
+                </div>
+                {selectedTitleId === null && <CheckIcon className="h-3.5 w-3.5 text-primary" />}
+              </DropdownMenuItem>
+
+              {titles.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider py-1">
+                    Workspaces ({titles.length})
+                  </DropdownMenuLabel>
+                  {titles.map((title) => (
+                    <div
+                      key={title.id}
+                      className="flex items-center justify-between px-2 py-1.5 text-xs rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors group cursor-pointer"
+                      onClick={() => setSelectedTitleId(title.id)}
+                    >
+                      <div className="flex items-center gap-2 truncate flex-1 min-w-0">
+                        <span
+                          className="h-2 w-2 rounded-full shrink-0"
+                          style={{ backgroundColor: title.color || 'hsl(var(--primary))' }}
+                        />
+                        <span className="truncate">{title.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 ml-1.5">
+                        <span className="text-[10px] text-muted-foreground mr-1">
+                          {title.subtask_count || 0}
+                        </span>
+                        {selectedTitleId === title.id && (
+                          <CheckIcon className="h-3.5 w-3.5 text-primary shrink-0" />
+                        )}
+                        {onEditTitle && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditTitle(title);
+                            }}
+                            title="Edit Title"
+                            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                          >
+                            <EditIcon className="h-3 w-3" />
+                          </button>
+                        )}
+                        {onDeleteTitle && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm(`Delete title "${title.name}" and all its logs?`)) {
+                                onDeleteTitle(title.id);
+                              }
+                            }}
+                            title="Delete Title"
+                            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
+                          >
+                            <TrashIcon className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={onAddTitle}
+                className="gap-2 text-xs text-primary font-medium cursor-pointer"
+              >
+                <PlusIcon className="h-3.5 w-3.5" />
+                <span>Create New Title...</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* 2. Date Range Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant={datePreset !== 'all' ? 'default' : 'outline'}
+                size="sm"
+                className={`h-9 justify-between gap-2 px-3 text-xs font-medium shrink-0 min-w-[120px] ${
+                  datePreset === 'all' ? 'bg-background' : ''
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <CalendarIcon className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                  <span className="truncate">{activeDateLabel}</span>
+                </div>
+                <ChevronDownIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="left" className="w-48">
+              <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider py-1">
+                Date Filter
+              </DropdownMenuLabel>
+              {PRESET_OPTIONS.map((p) => (
+                <DropdownMenuItem
+                  key={p.id}
+                  onClick={() => setDatePreset(p.id)}
+                  className="justify-between text-xs cursor-pointer"
+                >
+                  <span>{p.label}</span>
+                  {datePreset === p.id && <CheckIcon className="h-3.5 w-3.5 text-primary" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* 3. Search Box */}
           <div className="relative flex-1">
-            <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
             <Input
               ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search past work logs, titles, parts, tags... (Press / to focus)"
-              className="pl-9 pr-16 bg-background h-9 rounded-lg"
+              placeholder="Search past logs... (/)"
+              className="pl-8 pr-8 bg-background h-9 text-xs rounded-md"
             />
             {searchQuery ? (
-              <Button
-                variant="ghost"
-                size="icon"
+              <button
+                type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground hover:text-foreground"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
+                title="Clear search"
               >
                 <XIcon className="h-3.5 w-3.5" />
-              </Button>
-            ) : (
-              <kbd className="hidden sm:inline-block absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] font-mono bg-muted text-muted-foreground border border-border rounded">
-                /
-              </kbd>
-            )}
+              </button>
+            ) : null}
           </div>
 
-          {/* Live Count & Reset Button */}
-          <div className="flex items-center justify-between sm:justify-end gap-2">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background border border-border text-xs text-muted-foreground">
-              <span className="font-semibold text-primary">{filteredCount}</span>
-              <span>of {totalCount} tasks</span>
-            </div>
+          {/* Entry count indicator */}
+          <span className="text-[11px] text-muted-foreground whitespace-nowrap hidden lg:inline px-1">
+            {filteredCount} of {totalCount}
+          </span>
 
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearAllFilters}
-                className="h-8 gap-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
-              >
-                <RotateCcwIcon className="h-3 w-3" />
-                <span>Reset</span>
-              </Button>
-            )}
-          </div>
+          {/* 4. Desktop "+ Log Entry" Button */}
+          <Button
+            variant="default"
+            size="sm"
+            onClick={onOpenAddSubtask}
+            className="hidden sm:inline-flex h-9 px-3.5 text-xs gap-1.5 font-medium shrink-0"
+          >
+            <PlusIcon className="h-4 w-4" />
+            <span>Log Work</span>
+          </Button>
+
+          {/* Reset Filters Button (if active) */}
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAllFilters}
+              title="Reset all filters"
+              className="h-9 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+            >
+              <RotateCcwIcon className="h-3 w-3 sm:mr-1" />
+              <span className="hidden sm:inline">Reset</span>
+            </Button>
+          )}
         </div>
 
-        {/* Date Preset Filter Chips & Status Filter Row */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-          <div className="flex items-center gap-1 text-muted-foreground mr-1 pl-0.5">
-            <CalendarIcon className="h-3.5 w-3.5" />
-          </div>
-
-          {PRESETS.map((p) => {
-            const isActive = datePreset === p.id;
-            return (
-              <Button
-                key={p.id}
-                variant={isActive ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setDatePreset(p.id)}
-                className="h-7 px-2.5 text-xs font-medium rounded-md whitespace-nowrap"
-              >
-                {p.label}
-              </Button>
-            );
-          })}
-
-          <Separator orientation="vertical" className="h-4 mx-1.5" />
-
-          {/* Status Filters - Text Only Semantic Badges / Buttons */}
-          <div className="flex items-center gap-1">
-            {STATUSES.map((s) => {
-              const isSelected = (s.id === 'all' && !statusFilter) || statusFilter === s.id;
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setStatusFilter(s.id === 'all' ? undefined : (s.id as SubtaskStatus))}
-                  className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
-                    isSelected
-                      ? 'bg-foreground text-background shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
-                >
-                  {s.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Custom Date Range Picker */}
+        {/* Custom Date Range Picker (shown only when custom is selected) */}
         {datePreset === 'custom' && (
-          <div className="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-background border border-border text-xs animate-in fade-in">
-            <span className="font-medium text-foreground">Custom Past Range:</span>
-            <div className="flex items-center gap-2">
-              <label className="text-muted-foreground">From:</label>
+          <div className="flex flex-wrap items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border text-xs animate-in fade-in">
+            <span className="font-medium text-foreground text-xs">Date Range:</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted-foreground text-[11px]">From</span>
               <Input
                 type="date"
                 max={todayStr}
                 value={customStartDate || ''}
                 onChange={(e) => setCustomStartDate(e.target.value || undefined)}
-                className="h-8 w-auto text-xs bg-card"
+                className="h-7 w-32 text-xs bg-background"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-muted-foreground">To:</label>
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted-foreground text-[11px]">To</span>
               <Input
                 type="date"
                 max={todayStr}
                 value={customEndDate || ''}
                 onChange={(e) => setCustomEndDate(e.target.value || undefined)}
-                className="h-8 w-auto text-xs bg-card"
+                className="h-7 w-32 text-xs bg-background"
               />
             </div>
-            <Badge variant="outline" className="text-[11px] text-amber-500 border-amber-500/30">
-              Future dates disabled
-            </Badge>
+            <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline">
+              (Future dates disabled)
+            </span>
           </div>
         )}
       </div>
