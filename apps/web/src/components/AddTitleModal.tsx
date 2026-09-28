@@ -3,6 +3,7 @@ import { FolderIcon, CheckCircle2Icon } from './icons';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { InlineSpinner } from './LoadingFeedback';
 import type { Title, CreateTitleInput } from '@ledgr/shared';
 
 interface AddTitleModalProps {
@@ -94,6 +95,7 @@ export const AddTitleModal: React.FC<AddTitleModalProps> = ({
               type="button"
               variant="outline"
               size="sm"
+              disabled={isSubmitting}
               onClick={onClose}
               className="text-xs"
             >
@@ -106,8 +108,17 @@ export const AddTitleModal: React.FC<AddTitleModalProps> = ({
               disabled={isSubmitting}
               className="text-xs gap-1.5 font-medium"
             >
-              <CheckCircle2Icon className="h-3.5 w-3.5" />
-              <span>{isSubmitting ? 'Saving...' : editingTitle ? 'Update' : 'Create'}</span>
+              {isSubmitting ? (
+                <>
+                  <InlineSpinner size="xs" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2Icon className="h-3.5 w-3.5" />
+                  <span>{editingTitle ? 'Update' : 'Create'}</span>
+                </>
+              )}
             </Button>
           </div>
         </form>

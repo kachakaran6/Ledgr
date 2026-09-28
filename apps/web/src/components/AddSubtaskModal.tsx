@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
+import { InlineSpinner } from './LoadingFeedback';
 import type { Title, Subtask, CreateSubtaskInput, SubtaskStatus } from '@ledgr/shared';
 
 interface AddSubtaskModalProps {
@@ -424,7 +425,14 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
                 onClick={() => submitForm(true)}
                 className="h-10 px-3 text-xs font-medium order-2 sm:order-1"
               >
-                Save &amp; Log Another
+                {isSubmitting ? (
+                  <>
+                    <InlineSpinner size="xs" className="mr-1.5" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <span>Save &amp; Log Another</span>
+                )}
               </Button>
             ) : (
               <div />
@@ -435,6 +443,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
                 type="button"
                 variant="ghost"
                 size="default"
+                disabled={isSubmitting}
                 onClick={onClose}
                 className="h-10 px-3.5 text-xs font-medium"
               >
@@ -447,8 +456,17 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
                 disabled={isSubmitting}
                 className="h-10 px-4 text-xs gap-1.5 font-medium"
               >
-                <CheckCircle2Icon className="h-4 w-4" />
-                <span>{isSubmitting ? 'Saving...' : editingSubtask ? 'Save Changes' : 'Log Entry'}</span>
+                {isSubmitting ? (
+                  <>
+                    <InlineSpinner size="sm" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2Icon className="h-4 w-4" />
+                    <span>{editingSubtask ? 'Save Changes' : 'Log Entry'}</span>
+                  </>
+                )}
               </Button>
             </div>
           </div>

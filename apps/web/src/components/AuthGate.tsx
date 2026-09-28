@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 import { ArrowRightIcon, EyeIcon, EyeOffIcon } from './icons';
+import { InlineSpinner } from './LoadingFeedback';
 
 export const AuthGate: React.FC = () => {
   const { login, signup } = useAuth();
@@ -136,8 +137,17 @@ export const AuthGate: React.FC = () => {
                 className="w-full gap-1.5 font-medium h-9 text-xs mt-3"
                 disabled={isSubmitting}
               >
-                <span>{isSubmitting ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}</span>
-                <ArrowRightIcon className="h-3.5 w-3.5" />
+                {isSubmitting ? (
+                  <>
+                    <InlineSpinner size="xs" />
+                    <span>{mode === 'login' ? 'Signing In...' : 'Creating Account...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{mode === 'login' ? 'Sign In' : 'Create Account'}</span>
+                    <ArrowRightIcon className="h-3.5 w-3.5" />
+                  </>
+                )}
               </Button>
             </form>
           </CardContent>

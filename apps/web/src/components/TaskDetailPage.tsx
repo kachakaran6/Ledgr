@@ -10,13 +10,21 @@ import {
 } from './icons';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import {
+  SkeletonRowList,
+  InlineError,
+  InlineSpinner,
+  useDelayedLoading,
+} from './LoadingFeedback';
 import { getTodayDateString, getYesterdayDateString, isPastOrToday, formatDisplayDate } from '@ledgr/shared';
 import type { Title, Subtask, CreateSubtaskInput, SubtaskStatus } from '@ledgr/shared';
 
 interface TaskDetailPageProps {
   task: Title;
-  subtasks: Subtask[];
+  subtasks: (Subtask & { _isOptimistic?: boolean })[];
   isLoading: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
   onBack: () => void;
   onUpdateTitle: (titleId: string, input: { name: string; color?: string }) => Promise<void>;
   onDeleteTitle: (titleId: string) => Promise<void>;
@@ -29,6 +37,8 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
   task,
   subtasks,
   isLoading,
+  isError,
+  onRetry,
   onBack,
   onUpdateTitle,
   onDeleteTitle,
@@ -38,6 +48,13 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
 }) => {
   const today = getTodayDateString();
   const yesterday = getYesterdayDateString();
+
+  // Loading floor: minimum 300ms duration for skeleton
+  const showSkeleton = useDelayedLoading(isLoading, 300);
+
+  // Task & Subtask action states
+  const [isDeletingTask, setIsDeletingTask] = useState(false);
+  const [deletingSubtaskId, setDeletingSubtaskId] = useState<string | null>(null);
 
   // Title Editing State
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -134,16 +151,26 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
+            disabled={isDeletingTask}
+            onClick={async () => {
               if (confirm(`Delete task "${task.name}" and all its subtasks?`)) {
-                onDeleteTitle(task.id);
-                onBack();
+                setIsDeletingTask(true);
+                try {
+                  await onDeleteTitle(task.id);
+                  onBack();
+                } finally {
+                  setIsDeletingTask(false);
+                }
               }
             }}
-            className="text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1.5 h-8"
+            className="text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1.5 h-8 disabled:opacity-50"
           >
-            <TrashIcon className="h-3.5 w-3.5" />
-            <span>Delete</span>
+            {isDeletingTask ? (
+              <InlineSpinner size="xs" />
+            ) : (
+              <TrashIcon className="h-3.5 w-3.5" />
+            )}
+            <span>{isDeletingTask ? 'Deleting...' : 'Delete'}</span>
           </Button>
         </div>
       </div>
@@ -172,8 +199,17 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
                 disabled={isSavingTitle || !editedTitleName.trim()}
                 className="gap-1 text-xs font-medium h-10 px-3"
               >
-                <CheckIcon className="h-3.5 w-3.5" />
-                <span>Save</span>
+                {isSavingTitle ? (
+                  <>
+                    <InlineSpinner size="xs" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckIcon className="h-3.5 w-3.5" />
+                    <span>Save</span>
+                  </>
+                )}
               </Button>
               <Button
                 onClick={() => {
@@ -272,8 +308,17 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
                   size="sm"
                   className="h-8 px-3 text-xs gap-1 font-semibold shrink-0 w-full sm:w-auto"
                 >
-                  <PlusIcon className="h-3.5 w-3.5" />
-                  <span>Add Subtask</span>
+                  {isAdding ? (
+                    <>
+                      <InlineSpinner size="xs" />
+                      <span>Adding...</span>
+                    </>
+                  ) : (
+                    <>
+                      <PlusIcon className="h-3.5 w-3.5" />
+                      <span>Add Subtask</span>
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
@@ -291,12 +336,13 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
             </span>
           </div>
 
-          {isLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-12 bg-card border border-border rounded-xl animate-pulse" />
-              ))}
-            </div>
+          {showSkeleton ? (
+            <SkeletonRowList count={3} showTitleChip={false} />
+          ) : isError ? (
+            <InlineError
+              message="Failed to load subtasks for this task."
+              onRetry={onRetry}
+            />
           ) : sortedSubtasks.length === 0 ? (
             <div className="p-8 text-center border border-dashed border-border rounded-xl bg-card/40 text-xs text-muted-foreground">
               No subtasks logged for this task yet. Type above to add one!
@@ -307,6 +353,7 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
                 const displayDate = formatDisplayDate(st.entry_date);
                 const isDone = st.status === 'done';
                 const isInProgress = st.status === 'in_progress';
+                const isSubtaskDeleting = deletingSubtaskId === st.id;
 
                 return (
                   <div
@@ -323,9 +370,19 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
                             : 'text-[var(--status-cancelled)]'
                         }`}
                       />
-                      <p className="text-xs sm:text-sm text-foreground truncate flex-1">
-                        {st.description}
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs sm:text-sm text-foreground truncate flex-1">
+                            {st.description}
+                          </p>
+                          {Boolean(st._isOptimistic) && (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-full font-mono shrink-0">
+                              <InlineSpinner size="xs" />
+                              <span>syncing...</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
@@ -336,23 +393,34 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
                       <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                         <button
                           type="button"
+                          disabled={Boolean(st._isOptimistic)}
                           onClick={() => onEditSubtask(st)}
-                          className="p-1 rounded text-muted-foreground hover:text-foreground"
+                          className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-40"
                           title="Edit"
                         >
                           <EditIcon className="h-3.5 w-3.5" />
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
+                          disabled={Boolean(st._isOptimistic) || isSubtaskDeleting}
+                          onClick={async () => {
                             if (confirm('Delete this subtask?')) {
-                              onDeleteSubtask(st.id);
+                              setDeletingSubtaskId(st.id);
+                              try {
+                                await onDeleteSubtask(st.id);
+                              } finally {
+                                setDeletingSubtaskId(null);
+                              }
                             }
                           }}
-                          className="p-1 rounded text-muted-foreground hover:text-destructive"
+                          className="p-1 rounded text-muted-foreground hover:text-destructive disabled:opacity-40"
                           title="Delete"
                         >
-                          <TrashIcon className="h-3.5 w-3.5" />
+                          {isSubtaskDeleting ? (
+                            <InlineSpinner size="xs" />
+                          ) : (
+                            <TrashIcon className="h-3.5 w-3.5" />
+                          )}
                         </button>
                       </div>
                     </div>

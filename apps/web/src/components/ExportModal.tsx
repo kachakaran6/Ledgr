@@ -11,6 +11,7 @@ import { exportDocuments } from '../lib/export';
 import { useAuth } from '../context/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
+import { InlineSpinner } from './LoadingFeedback';
 import type { Subtask, ExportFormat } from '@ledgr/shared';
 
 interface ExportModalProps {
@@ -30,10 +31,17 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [format, setFormat] = useState<ExportFormat>('pdf');
   const [isExporting, setIsExporting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showSlowToast, setShowSlowToast] = useState(false);
 
   const handleExport = async () => {
     setIsExporting(true);
     setIsSuccess(false);
+    setShowSlowToast(false);
+
+    // If generation takes over 1 second, inform user with a progress toast so they know it didn't hang
+    const slowTimer = setTimeout(() => {
+      setShowSlowToast(true);
+    }, 1000);
 
     try {
       await exportDocuments({
@@ -50,6 +58,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     } catch (err) {
       alert('Failed to generate export document.');
     } finally {
+      clearTimeout(slowTimer);
+      setShowSlowToast(false);
       setIsExporting(false);
     }
   };
@@ -142,12 +152,21 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
           </div>
 
+          {/* 1s Progress toast for exports */}
+          {showSlowToast && (
+            <div className="p-2.5 rounded-lg bg-muted/80 border border-border text-xs text-foreground flex items-center gap-2 animate-in fade-in">
+              <InlineSpinner size="xs" />
+              <span>Preparing document layout &amp; compiling entries...</span>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="pt-2 flex items-center justify-end gap-2 border-t border-border">
             <Button
               type="button"
               variant="outline"
               size="sm"
+              disabled={isExporting}
               onClick={onClose}
               className="text-xs"
             >
@@ -167,7 +186,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   <span>Downloaded!</span>
                 </>
               ) : isExporting ? (
-                <span>Generating...</span>
+                <>
+                  <InlineSpinner size="xs" />
+                  <span>Generating...</span>
+                </>
               ) : (
                 <>
                   <DownloadIcon className="h-3.5 w-3.5" />

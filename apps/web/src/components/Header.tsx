@@ -56,13 +56,12 @@ export const Header: React.FC = () => {
             type="button"
             onClick={flush}
             title={status === 'offline' ? `Offline (${pendingCount} queued)` : 'Click to sync now'}
-            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-muted-foreground hover:bg-muted/70 transition-colors"
+            className={`items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-muted-foreground hover:bg-muted/70 transition-colors ${
+              status === 'synced' ? 'hidden sm:inline-flex' : 'flex'
+            }`}
           >
             {status === 'synced' && (
-              <>
-                <span className="h-2 w-2 rounded-full bg-[var(--status-done)]" />
-                <span className="text-[11px] hidden sm:inline text-muted-foreground">Synced</span>
-              </>
+              <span className="text-[11px] hidden sm:inline text-muted-foreground">Synced</span>
             )}
             {status === 'syncing' && (
               <>

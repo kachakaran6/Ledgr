@@ -9,16 +9,25 @@ import {
 } from './icons';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import {
+  SkeletonCardList,
+  InlineError,
+  InlineSpinner,
+  useDelayedLoading,
+  useDebounce,
+} from './LoadingFeedback';
 import type { Title, Subtask } from '@ledgr/shared';
 
 interface TaskListProps {
   tasks: Title[];
   allSubtasks: Subtask[];
   isLoading: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
   onSelectTask: (taskId: string) => void;
   onAddTask: () => void;
   onEditTask: (task: Title) => void;
-  onDeleteTask: (taskId: string) => void;
+  onDeleteTask: (taskId: string) => Promise<void> | void;
 }
 
 function formatTimeAgo(dateStr?: string | null): string {
@@ -45,12 +54,22 @@ export const TaskList: React.FC<TaskListProps> = ({
   tasks,
   allSubtasks,
   isLoading,
+  isError,
+  onRetry,
   onSelectTask,
   onAddTask,
   onEditTask,
   onDeleteTask,
 }) => {
   const [search, setSearch] = useState('');
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+
+  // Debounced search-as-you-type with immediate visual feedback
+  const debouncedSearch = useDebounce(search, 200);
+  const isSearchDebouncing = search !== debouncedSearch;
+
+  // Enforce ~300ms minimum floor on skeleton appearance
+  const showSkeleton = useDelayedLoading(isLoading || isSearchDebouncing, 300);
 
   // Map subtask count by task id
   const countMap = useMemo(() => {
@@ -63,24 +82,24 @@ export const TaskList: React.FC<TaskListProps> = ({
   }, [allSubtasks]);
 
   const filteredTasks = useMemo(() => {
-    if (!search.trim()) return tasks;
-    const q = search.toLowerCase().trim();
+    if (!debouncedSearch.trim()) return tasks;
+    const q = debouncedSearch.toLowerCase().trim();
     return tasks.filter((t) => t.name.toLowerCase().includes(q));
-  }, [tasks, search]);
+  }, [tasks, debouncedSearch]);
 
-  if (isLoading) {
-    return (
-      <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-3">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-14 rounded-xl bg-card border border-border animate-pulse" />
-        ))}
-      </div>
-    );
-  }
+  const handleDelete = async (taskId: string, taskName: string) => {
+    if (!confirm(`Delete task "${taskName}"?`)) return;
+    setDeletingTaskId(taskId);
+    try {
+      await onDeleteTask(taskId);
+    } finally {
+      setDeletingTaskId(null);
+    }
+  };
 
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-4">
-      {/* Search and Add Task Header */}
+      {/* Search and Add Task Header - Stays mounted so input focus is never lost */}
       <div className="flex items-center justify-between gap-2">
         <div className="relative flex-1">
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -103,8 +122,17 @@ export const TaskList: React.FC<TaskListProps> = ({
         </Button>
       </div>
 
-      {/* Empty State */}
-      {tasks.length === 0 && (
+      {/* 1. Loading Skeleton State */}
+      {showSkeleton ? (
+        <SkeletonCardList count={4} />
+      ) : isError ? (
+        /* 2. Error State with Retry Button */
+        <InlineError
+          message="Failed to load tasks from server or local storage."
+          onRetry={onRetry}
+        />
+      ) : tasks.length === 0 ? (
+        /* 3. Empty State */
         <div className="p-10 text-center rounded-xl border border-dashed border-border bg-card/40 my-6">
           <div className="h-10 w-10 rounded-xl bg-muted text-foreground flex items-center justify-center mx-auto mb-2.5">
             <FolderIcon className="h-5 w-5" />
@@ -118,21 +146,18 @@ export const TaskList: React.FC<TaskListProps> = ({
             <span>Create Task</span>
           </Button>
         </div>
-      )}
-
-      {/* Search empty */}
-      {tasks.length > 0 && filteredTasks.length === 0 && (
+      ) : filteredTasks.length === 0 ? (
+        /* 4. Search Empty */
         <div className="p-6 text-center text-xs text-muted-foreground">
           No tasks found matching &quot;{search}&quot;.
         </div>
-      )}
-
-      {/* Clean Tasks List */}
-      {filteredTasks.length > 0 && (
+      ) : (
+        /* 5. Rendered Tasks List */
         <div className="space-y-2">
           {filteredTasks.map((task) => {
             const count = countMap.get(task.id) || task.subtask_count || 0;
             const timeAgo = formatTimeAgo(task.created_at);
+            const isDeleting = deletingTaskId === task.id;
 
             return (
               <div
@@ -147,7 +172,9 @@ export const TaskList: React.FC<TaskListProps> = ({
                       {task.name}
                     </h3>
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
-                      <span className="font-mono tabular-nums">{count} {count === 1 ? 'subtask' : 'subtasks'}</span>
+                      <span className="font-mono tabular-nums">
+                        {count} {count === 1 ? 'subtask' : 'subtasks'}
+                      </span>
                       {timeAgo && (
                         <>
                           <span>•</span>
@@ -173,15 +200,16 @@ export const TaskList: React.FC<TaskListProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (confirm(`Delete task "${task.name}"?`)) {
-                          onDeleteTask(task.id);
-                        }
-                      }}
+                      disabled={isDeleting}
+                      onClick={() => handleDelete(task.id, task.name)}
                       title="Delete task"
-                      className="p-1 rounded text-muted-foreground hover:text-destructive"
+                      className="p-1 rounded text-muted-foreground hover:text-destructive disabled:opacity-50"
                     >
-                      <TrashIcon className="h-3.5 w-3.5" />
+                      {isDeleting ? (
+                        <InlineSpinner size="xs" />
+                      ) : (
+                        <TrashIcon className="h-3.5 w-3.5" />
+                      )}
                     </button>
                   </div>
 

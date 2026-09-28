@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { PlusIcon, DownloadIcon } from './components/icons';
+import { PlusIcon, DownloadIcon, AlertTriangleIcon } from './components/icons';
 import { Header } from './components/Header';
 import { FilterBar } from './components/FilterBar';
 import { SubtaskList } from './components/SubtaskList';
@@ -19,6 +19,7 @@ import { api } from './lib/api';
 import { localDb } from './lib/db';
 import { syncEngine } from './lib/sync';
 import { getDateRangeFromPreset } from '@ledgr/shared';
+import { useDebounce } from './components/LoadingFeedback';
 import type { Title, Subtask, CreateSubtaskInput, CreateTitleInput } from '@ledgr/shared';
 
 export const App: React.FC = () => {
@@ -126,7 +127,12 @@ export const App: React.FC = () => {
   }, [isSelectionMode, setIsSelectionMode, toggleTheme, setIsShortcutsOpen, setIsAddSubtaskOpen, setIsAddTitleOpen, setIsExportOpen, setIsAuthOpen]);
 
   // 1. Fetch Titles Query
-  const { data: titles = [] } = useQuery<Title[]>({
+  const {
+    data: titles = [],
+    isLoading: isTitlesLoading,
+    isError: isTitlesError,
+    refetch: refetchTitles,
+  } = useQuery<Title[]>({
     queryKey: ['titles', user?.id],
     queryFn: async () => {
       try {
@@ -164,7 +170,12 @@ export const App: React.FC = () => {
   });
 
   // 3. Fetch Subtasks Query for Active Task (Separate Page)
-  const { data: activeTaskSubtasks = [], isLoading: isLoadingTaskSubtasks } = useQuery<Subtask[]>({
+  const {
+    data: activeTaskSubtasks = [],
+    isLoading: isLoadingTaskSubtasks,
+    isError: isErrorTaskSubtasks,
+    refetch: refetchTaskSubtasks,
+  } = useQuery<Subtask[]>({
     queryKey: ['activeTaskSubtasks', user?.id, activeTaskId],
     queryFn: async () => {
       if (!activeTaskId) return [];
@@ -186,15 +197,25 @@ export const App: React.FC = () => {
     enabled: !!activeTaskId && !!user && !!api.getToken(),
   });
 
+  // Debounced search-as-you-type to prevent stale data and flickering empty states
+  const debouncedSearchQuery = useDebounce(searchQuery, 200);
+  const isSearchDebouncing = searchQuery !== debouncedSearchQuery;
+
   // 4. Fetch Subtasks Query for Ledger / All Activity Log (with filters)
-  const { data: subtasksData, isLoading } = useQuery<{ items: Subtask[]; total: number }>({
-    queryKey: ['subtasks', user?.id, selectedTitleId, searchQuery, datePreset, customStartDate, customEndDate, statusFilter],
+  const {
+    data: subtasksData,
+    isLoading: isSubtasksLoading,
+    isFetching: isSubtasksFetching,
+    isError: isSubtasksError,
+    refetch: refetchSubtasks,
+  } = useQuery<{ items: Subtask[]; total: number }>({
+    queryKey: ['subtasks', user?.id, selectedTitleId, debouncedSearchQuery, datePreset, customStartDate, customEndDate, statusFilter],
     queryFn: async () => {
       let items: Subtask[] = [];
       try {
         const serverData = await api.getSubtasks({
           title_ids: selectedTitleId ? [selectedTitleId] : undefined,
-          search: searchQuery || undefined,
+          search: debouncedSearchQuery || undefined,
           date_preset: datePreset !== 'all' && datePreset !== 'custom' ? datePreset : undefined,
           start_date: datePreset === 'custom' ? customStartDate : undefined,
           end_date: datePreset === 'custom' ? customEndDate : undefined,
@@ -227,8 +248,8 @@ export const App: React.FC = () => {
         if (startDate) localItems = localItems.filter((s) => s.entry_date >= startDate);
         if (endDate) localItems = localItems.filter((s) => s.entry_date <= endDate);
 
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase().trim();
+        if (debouncedSearchQuery.trim()) {
+          const q = debouncedSearchQuery.toLowerCase().trim();
           localItems = localItems.filter(
             (s) =>
               s.description.toLowerCase().includes(q) ||
@@ -251,6 +272,7 @@ export const App: React.FC = () => {
     enabled: !!user && !!api.getToken(),
   });
 
+  const isLedgerLoading = isSubtasksLoading || isSubtasksFetching || isSearchDebouncing;
   const subtasks = subtasksData?.items || [];
   const totalCount = subtasksData?.total || 0;
 
@@ -258,6 +280,9 @@ export const App: React.FC = () => {
   const selectedSubtasksForExport = selectedSubtaskIds.size > 0
     ? subtasks.filter((s) => selectedSubtaskIds.has(s.id))
     : subtasks;
+
+  // Rollback toast state for optimistic UI failures
+  const [rollbackToast, setRollbackToast] = useState<string | null>(null);
 
   // Mutations
   const saveSubtaskMutation = useMutation({
@@ -299,14 +324,100 @@ export const App: React.FC = () => {
       }
       return saved;
     },
+    onMutate: async (input: CreateSubtaskInput) => {
+      await queryClient.cancelQueries({ queryKey: ['subtasks'] });
+      await queryClient.cancelQueries({ queryKey: ['activeTaskSubtasks'] });
+      await queryClient.cancelQueries({ queryKey: ['allUserSubtasks'] });
+
+      const subtasksQueryKey = ['subtasks', user?.id, selectedTitleId, debouncedSearchQuery, datePreset, customStartDate, customEndDate, statusFilter];
+      const activeTaskQueryKey = ['activeTaskSubtasks', user?.id, activeTaskId];
+      const allUserQueryKey = ['allUserSubtasks', user?.id];
+
+      const previousSubtasks = queryClient.getQueryData<{ items: Subtask[]; total: number }>(subtasksQueryKey);
+      const previousActive = queryClient.getQueryData<Subtask[]>(activeTaskQueryKey);
+      const previousAll = queryClient.getQueryData<Subtask[]>(allUserQueryKey);
+
+      const isEdit = Boolean(editingSubtask);
+      const optimisticSubtask: Subtask & { _isOptimistic?: boolean } = isEdit
+        ? {
+            ...editingSubtask!,
+            ...input,
+            updated_at: new Date().toISOString(),
+            title: titles.find((t) => t.id === input.title_id),
+            _isOptimistic: true,
+          }
+        : {
+            id: `optimistic-${Date.now()}`,
+            user_id: user?.id || '',
+            title_id: input.title_id,
+            description: input.description,
+            entry_date: input.entry_date,
+            status: input.status || 'done',
+            tags: input.tags || [],
+            cost: input.cost ?? null,
+            time_spent_minutes: input.time_spent_minutes ?? null,
+            sort_order: input.sort_order ?? 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            deleted_at: null,
+            title: titles.find((t) => t.id === input.title_id),
+            _isOptimistic: true,
+          };
+
+      // Optimistically update activeTaskSubtasks if viewing that task
+      if (activeTaskId && activeTaskId === input.title_id) {
+        queryClient.setQueryData<Subtask[]>(activeTaskQueryKey, (old = []) => {
+          if (isEdit) {
+            return old.map((s) => (s.id === editingSubtask!.id ? optimisticSubtask : s));
+          }
+          return [optimisticSubtask, ...old];
+        });
+      }
+
+      // Optimistically update subtasks feed
+      queryClient.setQueryData<{ items: Subtask[]; total: number }>(subtasksQueryKey, (old) => {
+        if (!old) return { items: [optimisticSubtask], total: 1 };
+        if (isEdit) {
+          return {
+            ...old,
+            items: old.items.map((s) => (s.id === editingSubtask!.id ? optimisticSubtask : s)),
+          };
+        }
+        return {
+          items: [optimisticSubtask, ...old.items],
+          total: old.total + 1,
+        };
+      });
+
+      // Optimistically update allUserSubtasks
+      queryClient.setQueryData<Subtask[]>(allUserQueryKey, (old = []) => {
+        if (isEdit) {
+          return old.map((s) => (s.id === editingSubtask!.id ? optimisticSubtask : s));
+        }
+        return [optimisticSubtask, ...old];
+      });
+
+      return { previousSubtasks, previousActive, previousAll, subtasksQueryKey, activeTaskQueryKey, allUserQueryKey };
+    },
+    onError: (err: any, _input, context) => {
+      if (context) {
+        if (context.previousSubtasks) queryClient.setQueryData(context.subtasksQueryKey, context.previousSubtasks);
+        if (context.previousActive) queryClient.setQueryData(context.activeTaskQueryKey, context.previousActive);
+        if (context.previousAll) queryClient.setQueryData(context.allUserQueryKey, context.previousAll);
+      }
+      setRollbackToast(err?.message || 'Failed to save entry. Changes were rolled back.');
+      setTimeout(() => setRollbackToast(null), 4000);
+    },
     onSuccess: (saved) => {
+      if (saved && selectedTitleId && saved.title_id !== selectedTitleId) {
+        setSelectedTitleId(null);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['subtasks'] });
       queryClient.invalidateQueries({ queryKey: ['allUserSubtasks'] });
       queryClient.invalidateQueries({ queryKey: ['activeTaskSubtasks'] });
       queryClient.invalidateQueries({ queryKey: ['titles'] });
-      if (saved && selectedTitleId && saved.title_id !== selectedTitleId) {
-        setSelectedTitleId(null);
-      }
     },
   });
 
@@ -408,6 +519,8 @@ export const App: React.FC = () => {
             task={activeTask}
             subtasks={activeTaskSubtasks}
             isLoading={isLoadingTaskSubtasks}
+            isError={isErrorTaskSubtasks}
+            onRetry={() => refetchTaskSubtasks()}
             onBack={() => setActiveTaskId(null)}
             onUpdateTitle={async (_titleId, input) => {
               setEditingTitle(activeTask);
@@ -473,6 +586,14 @@ export const App: React.FC = () => {
   // =========================================================================
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground selection:bg-primary selection:text-primary-foreground pb-20 sm:pb-0">
+      {/* Optimistic UI Rollback Toast Alert */}
+      {rollbackToast && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 p-3 rounded-xl bg-destructive text-destructive-foreground text-xs font-medium shadow-xl flex items-center gap-2 animate-in slide-in-from-top-4">
+          <AlertTriangleIcon className="h-4 w-4 shrink-0" />
+          <span>{rollbackToast}</span>
+        </div>
+      )}
+
       {/* Header */}
       <Header />
 
@@ -517,7 +638,9 @@ export const App: React.FC = () => {
           <TaskList
             tasks={titles}
             allSubtasks={allUserSubtasks}
-            isLoading={isAuthLoading}
+            isLoading={isAuthLoading || isTitlesLoading}
+            isError={isTitlesError}
+            onRetry={() => refetchTitles()}
             onSelectTask={(taskId) => setActiveTaskId(taskId)}
             onAddTask={() => {
               setEditingTitle(null);
@@ -555,7 +678,9 @@ export const App: React.FC = () => {
             {/* Main Single-Pane Log Feed */}
             <SubtaskList
               subtasks={subtasks}
-              isLoading={isLoading}
+              isLoading={isLedgerLoading}
+              isError={isSubtasksError}
+              onRetry={() => refetchSubtasks()}
               onEditSubtask={(subtask) => {
                 setEditingSubtask(subtask);
                 setIsAddSubtaskOpen(true);

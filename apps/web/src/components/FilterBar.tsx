@@ -22,6 +22,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from './ui/dropdown-menu';
+import { InlineSpinner } from './LoadingFeedback';
 import type { Title, DatePreset } from '@ledgr/shared';
 
 interface FilterBarProps {
@@ -69,6 +70,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     hasActiveFilters,
   } = useUI();
 
+  const [deletingTitleId, setDeletingTitleId] = React.useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -173,16 +175,26 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                           {onDeleteTitle && (
                             <button
                               type="button"
-                              onClick={(e) => {
+                              disabled={deletingTitleId === title.id}
+                              onClick={async (e) => {
                                 e.stopPropagation();
                                 if (confirm(`Delete title "${title.name}" and all its logs?`)) {
-                                  onDeleteTitle(title.id);
+                                  setDeletingTitleId(title.id);
+                                  try {
+                                    await onDeleteTitle(title.id);
+                                  } finally {
+                                    setDeletingTitleId(null);
+                                  }
                                 }
                               }}
                               title="Delete Title"
-                              className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
+                              className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive disabled:opacity-50"
                             >
-                              <TrashIcon className="h-3 w-3" />
+                              {deletingTitleId === title.id ? (
+                                <InlineSpinner size="xs" />
+                              ) : (
+                                <TrashIcon className="h-3 w-3" />
+                              )}
                             </button>
                           )}
                         </div>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   CalendarIcon,
   CheckCircle2Icon,
@@ -11,14 +11,21 @@ import {
 import { useUI } from '../context/UIContext';
 import { formatDisplayDate } from '@ledgr/shared';
 import { Button } from './ui/button';
-import { Skeleton } from './ui/skeleton';
+import {
+  SkeletonRowList,
+  InlineError,
+  InlineSpinner,
+  useDelayedLoading,
+} from './LoadingFeedback';
 import type { Subtask } from '@ledgr/shared';
 
 interface SubtaskListProps {
-  subtasks: Subtask[];
+  subtasks: (Subtask & { _isOptimistic?: boolean })[];
   isLoading: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
   onEditSubtask: (subtask: Subtask) => void;
-  onDeleteSubtask: (subtaskId: string) => void;
+  onDeleteSubtask: (subtaskId: string) => Promise<void> | void;
   onOpenAddModal: () => void;
   onOpenTaskPage?: (taskId: string) => void;
 }
@@ -26,6 +33,8 @@ interface SubtaskListProps {
 export const SubtaskList: React.FC<SubtaskListProps> = ({
   subtasks,
   isLoading,
+  isError,
+  onRetry,
   onEditSubtask,
   onDeleteSubtask,
   onOpenAddModal,
@@ -42,18 +51,36 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
     clearAllFilters,
   } = useUI();
 
-  if (isLoading) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Minimum visible duration of ~300ms prevents jarring flash
+  const showSkeleton = useDelayedLoading(isLoading, 300);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this entry?')) return;
+    setDeletingId(id);
+    try {
+      await onDeleteSubtask(id);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  if (showSkeleton) {
     return (
       <div className="p-3 sm:p-6 space-y-3 max-w-5xl mx-auto">
-        {[1, 2, 3, 4].map((i) => (
-          <div
-            key={i}
-            className="p-3.5 rounded-xl border border-border bg-card space-y-2.5"
-          >
-            <Skeleton className="h-4 w-1/4" />
-            <Skeleton className="h-5 w-3/4" />
-          </div>
-        ))}
+        <SkeletonRowList count={4} showTitleChip={!selectedTitleId} />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-6">
+        <InlineError
+          message="Failed to load log entries. Please check your connection."
+          onRetry={onRetry}
+        />
       </div>
     );
   }
@@ -99,8 +126,8 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
   }
 
   // Group subtasks by Date descending
-  const groupedByDate: Array<{ date: string; displayDate: string; items: Subtask[] }> = [];
-  const dateMap = new Map<string, Subtask[]>();
+  const groupedByDate: Array<{ date: string; displayDate: string; items: (Subtask & { _isOptimistic?: boolean })[] }> = [];
+  const dateMap = new Map<string, (Subtask & { _isOptimistic?: boolean })[]>();
 
   for (const st of subtasks) {
     if (!dateMap.has(st.entry_date)) {
@@ -244,6 +271,16 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                           </div>
                         )}
 
+                        {/* Optimistic syncing indicator */}
+                        {Boolean(subtask._isOptimistic) && (
+                          <div className="mb-1">
+                            <span className="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/80 px-2 py-0.5 rounded-full font-mono">
+                              <InlineSpinner size="xs" />
+                              <span>syncing...</span>
+                            </span>
+                          </div>
+                        )}
+
                         {/* Description */}
                         <p className="text-xs sm:text-sm font-normal text-foreground whitespace-pre-wrap leading-relaxed">
                           {subtask.description}
@@ -256,27 +293,31 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"
+                          disabled={Boolean(subtask._isOptimistic)}
                           onClick={(e) => {
                             e.stopPropagation();
                             onEditSubtask(subtask);
                           }}
                           title="Edit Entry"
-                          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
                         >
                           <EditIcon className="h-3.5 w-3.5" />
                         </button>
                         <button
                           type="button"
+                          disabled={Boolean(subtask._isOptimistic) || deletingId === subtask.id}
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (confirm('Delete this entry?')) {
-                              onDeleteSubtask(subtask.id);
-                            }
+                            handleDelete(subtask.id);
                           }}
                           title="Delete Entry"
-                          className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40"
                         >
-                          <TrashIcon className="h-3.5 w-3.5" />
+                          {deletingId === subtask.id ? (
+                            <InlineSpinner size="xs" />
+                          ) : (
+                            <TrashIcon className="h-3.5 w-3.5" />
+                          )}
                         </button>
                       </div>
                     )}
