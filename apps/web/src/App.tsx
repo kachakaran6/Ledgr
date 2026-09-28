@@ -36,6 +36,7 @@ export const App: React.FC = () => {
     isSelectionMode,
     setIsSelectionMode,
     selectedSubtaskIds,
+    clearSelectedSubtasks,
     toggleTheme,
     isAddSubtaskOpen,
     setIsAddSubtaskOpen,
@@ -596,14 +597,18 @@ export const App: React.FC = () => {
       )}
 
       {/* Header */}
-      <Header />
+      <Header showSelection={activeTab === 'ledger'} />
 
       {/* Top View Switcher Tabs: [Tasks] and [All Logs] */}
       <div className="border-b border-border bg-card/60 px-4 sm:px-6 sticky top-13 z-20 backdrop-blur-md">
         <div className="max-w-3xl mx-auto flex items-center gap-4 sm:gap-6">
           <button
             type="button"
-            onClick={() => setActiveTab('tasks')}
+            onClick={() => {
+              setActiveTab('tasks');
+              setIsSelectionMode(false);
+              clearSelectedSubtasks();
+            }}
             className={`py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-all flex items-center gap-1.5 ${
               activeTab === 'tasks'
                 ? 'border-primary text-foreground'

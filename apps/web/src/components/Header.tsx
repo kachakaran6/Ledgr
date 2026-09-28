@@ -26,7 +26,11 @@ import {
   DropdownMenuSeparator,
 } from './ui/dropdown-menu';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  showSelection?: boolean;
+}
+
+export const Header: React.FC<HeaderProps> = ({ showSelection = false }) => {
   const { user, logout, deleteAccount } = useAuth();
   const {
     theme,
@@ -88,24 +92,26 @@ export const Header: React.FC = () => {
 
           <Separator orientation="vertical" className="h-4" />
 
-          {/* Select Mode Toggle */}
-          <Button
-            variant={isSelectionMode ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => {
-              setIsSelectionMode(!isSelectionMode);
-              if (isSelectionMode) clearSelectedSubtasks();
-            }}
-            className="h-8 px-2 sm:px-2.5 text-xs gap-1.5 font-medium"
-            title={isSelectionMode ? 'Done Selecting' : 'Select records for export'}
-          >
-            {isSelectionMode ? (
-              <CheckSquareIcon className="h-3.5 w-3.5" />
-            ) : (
-              <SquareIcon className="h-3.5 w-3.5" />
-            )}
-            <span>{isSelectionMode ? 'Done' : 'Select'}</span>
-          </Button>
+          {/* Select Mode Toggle (only when on All Logs / Ledger tab) */}
+          {showSelection && (
+            <Button
+              variant={isSelectionMode ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => {
+                setIsSelectionMode(!isSelectionMode);
+                if (isSelectionMode) clearSelectedSubtasks();
+              }}
+              className="h-8 px-2 sm:px-2.5 text-xs gap-1.5 font-medium animate-in fade-in"
+              title={isSelectionMode ? 'Done Selecting' : 'Select records for export'}
+            >
+              {isSelectionMode ? (
+                <CheckSquareIcon className="h-3.5 w-3.5" />
+              ) : (
+                <SquareIcon className="h-3.5 w-3.5" />
+              )}
+              <span>{isSelectionMode ? 'Done' : 'Select'}</span>
+            </Button>
+          )}
 
           {/* Theme Toggle */}
           <Button
