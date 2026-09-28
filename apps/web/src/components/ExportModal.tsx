@@ -6,6 +6,7 @@ import {
   DownloadIcon,
   CheckCircle2Icon,
   FilterIcon,
+  AlertCircleIcon,
 } from './icons';
 import { exportDocuments } from '../lib/export';
 import { useAuth } from '../context/AuthContext';
@@ -31,32 +32,37 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [format, setFormat] = useState<ExportFormat>('pdf');
   const [isExporting, setIsExporting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showSlowToast, setShowSlowToast] = useState(false);
 
   const handleExport = async () => {
     setIsExporting(true);
     setIsSuccess(false);
+    setErrorMsg(null);
     setShowSlowToast(false);
 
-    // If generation takes over 1 second, inform user with a progress toast so they know it didn't hang
+    // After 1.5s show a progress toast so the user knows it's working
     const slowTimer = setTimeout(() => {
       setShowSlowToast(true);
-    }, 1000);
+    }, 1500);
 
     try {
       await exportDocuments({
         format,
         subtasks,
         userName: user?.name || user?.email || 'Technician',
-        filenamePrefix: 'logpast-proof-of-work',
+        filenamePrefix: 'ledgr-proof-of-work',
+        // Pass explicit subtask IDs so server re-verifies ownership
+        subtaskIds: subtasks.map(s => s.id),
       });
       setIsSuccess(true);
       setTimeout(() => {
         setIsSuccess(false);
         onClose();
-      }, 1200);
+      }, 1400);
     } catch (err) {
-      alert('Failed to generate export document.');
+      const msg = err instanceof Error ? err.message : 'Export failed — please try again.';
+      setErrorMsg(msg);
     } finally {
       clearTimeout(slowTimer);
       setShowSlowToast(false);
@@ -64,8 +70,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     }
   };
 
+  const handleClose = () => {
+    if (!isExporting) {
+      setErrorMsg(null);
+      setIsSuccess(false);
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2">
@@ -88,7 +102,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 {selectedCount > 0 ? `${selectedCount} Selected Records` : `${subtasks.length} Filtered Records`}
               </p>
               <p className="text-muted-foreground text-[11px]">
-                Export respects your active filters and selections.
+                Export includes only your verified entries.
               </p>
             </div>
           </div>
@@ -102,7 +116,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               {/* PDF */}
               <button
                 type="button"
-                onClick={() => setFormat('pdf')}
+                onClick={() => { setFormat('pdf'); setErrorMsg(null); }}
                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${
                   format === 'pdf'
                     ? 'bg-muted border-foreground/40 text-foreground ring-1 ring-border shadow-xs'
@@ -119,7 +133,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               {/* Excel */}
               <button
                 type="button"
-                onClick={() => setFormat('xlsx')}
+                onClick={() => { setFormat('xlsx'); setErrorMsg(null); }}
                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${
                   format === 'xlsx'
                     ? 'bg-muted border-foreground/40 text-foreground ring-1 ring-border shadow-xs'
@@ -136,7 +150,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               {/* CSV */}
               <button
                 type="button"
-                onClick={() => setFormat('csv')}
+                onClick={() => { setFormat('csv'); setErrorMsg(null); }}
                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${
                   format === 'csv'
                     ? 'bg-muted border-foreground/40 text-foreground ring-1 ring-border shadow-xs'
@@ -152,11 +166,23 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
           </div>
 
-          {/* 1s Progress toast for exports */}
+          {/* Progress toast (shown after 1.5s) */}
           {showSlowToast && (
             <div className="p-2.5 rounded-lg bg-muted/80 border border-border text-xs text-foreground flex items-center gap-2 animate-in fade-in">
               <InlineSpinner size="xs" />
-              <span>Preparing document layout &amp; compiling entries...</span>
+              <span>
+                {format === 'pdf' ? 'Rendering document layout & embedding fonts...' :
+                 format === 'xlsx' ? 'Building spreadsheet with native types...' :
+                 'Preparing CSV export...'}
+              </span>
+            </div>
+          )}
+
+          {/* Error message */}
+          {errorMsg && (
+            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive flex items-start gap-2 animate-in fade-in">
+              <AlertCircleIcon className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+              <span>{errorMsg}</span>
             </div>
           )}
 
@@ -167,7 +193,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               variant="outline"
               size="sm"
               disabled={isExporting}
-              onClick={onClose}
+              onClick={handleClose}
               className="text-xs"
             >
               Cancel

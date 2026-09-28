@@ -20,11 +20,15 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
+          cache-dependency-path: |
+            packages/shared/package-lock.json
+            apps/api/package-lock.json
+            apps/web/package-lock.json
 
       - name: Build & Test Shared Package
         run: |
           cd packages/shared
-          npm install
+          npm ci
           npm run build
           npm test
           npm pack
@@ -32,7 +36,7 @@ jobs:
       - name: Build & Test Backend API
         run: |
           cd apps/api
-          npm install
+          npm ci --install-links
           npm run build
           npm test
           npm run test:perf
@@ -40,6 +44,6 @@ jobs:
       - name: Build & Test Web Application
         run: |
           cd apps/web
-          npm install
+          npm ci --install-links
           npm run build
           npm test

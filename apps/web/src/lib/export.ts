@@ -1,7 +1,14 @@
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
+/**
+ * Client-side export module.
+ *
+ * Routes all PDF and Excel exports through the server API (pdfmake + exceljs),
+ * with a fallback for CSV. The client never generates PDFs or Excel itself.
+ *
+ * Triggers a confetti micro-interaction on success.
+ */
+
 import confetti from 'canvas-confetti';
+import { api, ApiError } from './api';
 import type { Subtask, ExportFormat } from '@ledgr/shared';
 
 export interface ExportOptions {
@@ -9,156 +16,156 @@ export interface ExportOptions {
   subtasks: Subtask[];
   userName?: string;
   filenamePrefix?: string;
+  /** Optional: pass explicit subtask IDs to export (server will re-verify ownership) */
+  subtaskIds?: string[];
+  /** Optional: pass filter params so server re-runs the same query */
+  titleIds?: string[];
 }
 
-export async function exportDocuments({ format, subtasks, userName = 'Technician', filenamePrefix = 'logpast-export' }: ExportOptions) {
-  const timestamp = new Date().toISOString().split('T')[0];
-  const filename = `${filenamePrefix}-${timestamp}`;
+/**
+ * Main export entry point.
+ * Calls the server API to generate PDF or Excel, downloads the result.
+ * Falls back to a client-side CSV if the server is unavailable.
+ */
+export async function exportDocuments({
+  format,
+  subtasks,
+  subtaskIds,
+  titleIds,
+}: ExportOptions): Promise<void> {
+  if (subtasks.length === 0) {
+    throw new Error('No entries selected. Please select or filter at least one entry to export.');
+  }
 
-  if (format === 'pdf') {
-    await exportClientPdf(subtasks, userName, filename);
-  } else if (format === 'xlsx') {
-    exportClientExcel(subtasks, filename);
+  if (format === 'pdf' || format === 'xlsx') {
+    await exportViaServer(format, subtasks, subtaskIds, titleIds);
   } else if (format === 'csv') {
-    exportClientCsv(subtasks, filename);
+    await exportCsvViaServer(subtasks, subtaskIds, titleIds);
   }
 
-  // Trigger celebration micro-interaction
+  // Confetti micro-interaction on success
   try {
-    confetti({
-      particleCount: 40,
-      spread: 60,
-      origin: { y: 0.85 }
-    });
+    confetti({ particleCount: 45, spread: 65, origin: { y: 0.85 } });
   } catch {
-    // Ignore confetti errors
+    // ignore confetti errors
   }
 }
 
-function exportClientPdf(subtasks: Subtask[], userName: string, filename: string) {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+/**
+ * Call the server API to generate and download PDF or Excel.
+ */
+async function exportViaServer(
+  format: 'pdf' | 'xlsx',
+  subtasks: Subtask[],
+  subtaskIds?: string[],
+  titleIds?: string[]
+): Promise<void> {
+  const endpoint = format === 'pdf' ? '/export/pdf' : '/export/xlsx';
+  const mimeType = format === 'pdf'
+    ? 'application/pdf'
+    : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-  // Header Styling: Warm paper and ink ledger feel
-  doc.setFontSize(22);
-  doc.setTextColor(38, 36, 31); // #26241F
-  doc.text('Ledgr — Proof of Work', 14, 20);
-
-  doc.setFontSize(10);
-  doc.setTextColor(107, 101, 88); // #6B6558
-  doc.text(`Technician / User: ${userName}`, 14, 28);
-  doc.text(`Report Generated: ${new Date().toLocaleString()}`, 14, 33);
-  doc.text(`Total Tasks Logged: ${subtasks.length}`, 14, 38);
-
-  // Group by Title
-  const grouped = new Map<string, Subtask[]>();
-  for (const st of subtasks) {
-    const title = st.title?.name || 'General';
-    if (!grouped.has(title)) grouped.set(title, []);
-    grouped.get(title)!.push(st);
+  // Build the request body. If we have explicit IDs, send those so the server
+  // can re-verify ownership. Otherwise send the title filters so the server
+  // re-runs the same query.
+  const body: Record<string, unknown> = { format };
+  if (subtaskIds && subtaskIds.length > 0) {
+    body.subtask_ids = subtaskIds;
+  } else if (titleIds && titleIds.length > 0) {
+    body.title_ids = titleIds;
+  }
+  // Always include subtask_ids as fallback if server-side filter isn't enough
+  if (!body.subtask_ids && subtasks.length > 0 && subtasks.length <= 500) {
+    body.subtask_ids = subtasks.map(s => s.id);
   }
 
-  let startY = 46;
+  const token = api.getToken();
+  const res = await fetch(`/api${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
 
-  for (const [titleName, tasks] of grouped.entries()) {
-    if (startY > 250) {
-      doc.addPage();
-      startY = 20;
+  if (!res.ok) {
+    // Try to read the error body
+    let errorMsg = `Export failed (HTTP ${res.status})`;
+    try {
+      const json = await res.json();
+      if (json?.message) errorMsg = json.message;
+      else if (json?.error?.message) errorMsg = json.error.message;
+    } catch {
+      // ignore parse errors
     }
-
-    doc.setFontSize(13);
-    doc.setTextColor(38, 36, 31); // #26241F
-    doc.text(`• ${titleName} (${tasks.length})`, 14, startY);
-    startY += 4;
-
-    const tableData = tasks.map((t) => [
-      t.entry_date,
-      t.description,
-      t.status.toUpperCase(),
-      t.tags.join(', ') || '-',
-      t.cost != null ? `$${t.cost.toFixed(2)}` : '-',
-      t.time_spent_minutes != null ? `${t.time_spent_minutes}m` : '-'
-    ]);
-
-    autoTable(doc, {
-      startY,
-      head: [['Date', 'Task Description', 'Status', 'Tags', 'Cost', 'Time']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: {
-        fillColor: [38, 36, 31],
-        textColor: [250, 247, 240],
-        fontSize: 8.5,
-        fontStyle: 'bold'
-      },
-      bodyStyles: {
-        fontSize: 8.5,
-        textColor: [38, 36, 31]
-      },
-      alternateRowStyles: {
-        fillColor: [250, 247, 240]
-      },
-      margin: { left: 14, right: 14 }
-    });
-
-    startY = (doc as any).lastAutoTable.finalY + 8;
+    throw new Error(errorMsg);
   }
 
-  doc.save(`${filename}.pdf`);
+  // Extract filename from Content-Disposition header if present
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const filenameMatch = disposition.match(/filename="?([^";\n]+)"?/);
+  const filename = filenameMatch?.[1] || `ledgr-export-${Date.now()}.${format}`;
+
+  const blob = await res.blob();
+  triggerDownload(blob, filename, mimeType);
 }
 
-function exportClientExcel(subtasks: Subtask[], filename: string) {
-  const rows = subtasks.map((t) => ({
-    Title: t.title?.name || 'General',
-    Date: t.entry_date,
-    Description: t.description,
-    Status: t.status.toUpperCase(),
-    Tags: t.tags.join(', '),
-    'Cost ($)': t.cost ?? '',
-    'Time Spent (min)': t.time_spent_minutes ?? '',
-    'Created At': new Date(t.created_at).toLocaleString()
-  }));
+/**
+ * Export CSV via server (cleaner escaping than client-side).
+ */
+async function exportCsvViaServer(
+  subtasks: Subtask[],
+  subtaskIds?: string[],
+  titleIds?: string[]
+): Promise<void> {
+  const body: Record<string, unknown> = { format: 'csv' };
+  if (subtaskIds && subtaskIds.length > 0) {
+    body.subtask_ids = subtaskIds;
+  } else if (titleIds && titleIds.length > 0) {
+    body.title_ids = titleIds;
+  } else if (subtasks.length > 0 && subtasks.length <= 500) {
+    body.subtask_ids = subtasks.map(s => s.id);
+  }
 
-  const worksheet = XLSX.utils.json_to_sheet(rows);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Work Log');
+  const token = api.getToken();
+  const res = await fetch('/api/export/csv', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
 
-  // Auto-fit column widths
-  const colWidths = [
-    { wch: 20 },
-    { wch: 14 },
-    { wch: 45 },
-    { wch: 12 },
-    { wch: 20 },
-    { wch: 12 },
-    { wch: 16 },
-    { wch: 22 }
-  ];
-  worksheet['!cols'] = colWidths;
+  if (!res.ok) {
+    let errorMsg = `Export failed (HTTP ${res.status})`;
+    try {
+      const json = await res.json();
+      if (json?.message) errorMsg = json.message;
+    } catch {}
+    throw new Error(errorMsg);
+  }
 
-  XLSX.writeFile(workbook, `${filename}.xlsx`);
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const filenameMatch = disposition.match(/filename="?([^";\n]+)"?/);
+  const filename = filenameMatch?.[1] || `ledgr-export-${Date.now()}.csv`;
+
+  const csvText = await res.text();
+  const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+  triggerDownload(blob, filename, 'text/csv');
 }
 
-function exportClientCsv(subtasks: Subtask[], filename: string) {
-  const rows = subtasks.map((t) => ({
-    Title: t.title?.name || 'General',
-    Date: t.entry_date,
-    Description: t.description,
-    Status: t.status,
-    Tags: t.tags.join('; '),
-    Cost: t.cost ?? '',
-    TimeSpentMinutes: t.time_spent_minutes ?? '',
-    CreatedAt: t.created_at
-  }));
-
-  const worksheet = XLSX.utils.json_to_sheet(rows);
-  const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
-
-  const blob = new Blob([csvOutput], { type: 'text/csv;charset=utf-8;' });
+/**
+ * Trigger a browser download from a Blob.
+ */
+function triggerDownload(blob: Blob, filename: string, _mimeType: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', `${filename}.csv`);
+  link.href = url;
+  link.download = filename;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
