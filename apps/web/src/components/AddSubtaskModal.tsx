@@ -48,6 +48,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
   const [cost, setCost] = useState<string>('');
   const [timeSpent, setTimeSpent] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const descInputRef = useRef<HTMLTextAreaElement>(null);
@@ -73,9 +74,13 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
         setShowExtraFields(true);
       }
     } else {
-      setTitleId(selectedTitleId || titles[0]?.id || '');
+      if (!titleId) {
+        setTitleId(selectedTitleId || titles[0]?.id || '');
+      }
       setDescription('');
-      setEntryDate(today);
+      if (!entryDate) {
+        setEntryDate(today);
+      }
       setStatus('done');
       setTags([]);
       setCost('');
@@ -83,6 +88,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
       setShowExtraFields(false);
     }
     setError(null);
+    setSuccessToast(null);
   }, [editingSubtask, selectedTitleId, titles, isOpen]);
 
   useEffect(() => {
@@ -103,9 +109,9 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
     setTags(tags.filter((t) => t !== tagToRemove));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitForm = async (keepOpen = false) => {
     setError(null);
+    setSuccessToast(null);
 
     if (!titleId) {
       setError('Please select or create a Title category.');
@@ -135,12 +141,29 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
         time_spent_minutes: timeSpent ? parseInt(timeSpent, 10) : null,
         sort_order: editingSubtask?.sort_order ?? 0,
       });
-      onClose();
+
+      if (keepOpen) {
+        // Reset description and extra fields, keep titleId & entryDate for rapid multiple logging!
+        setDescription('');
+        setTags([]);
+        setCost('');
+        setTimeSpent('');
+        setSuccessToast('✓ Logged! Ready for next entry.');
+        setTimeout(() => setSuccessToast(null), 2500);
+        setTimeout(() => descInputRef.current?.focus(), 50);
+      } else {
+        onClose();
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to save entry');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitForm(false);
   };
 
   return (
@@ -151,7 +174,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
             {editingSubtask ? 'Edit Log Entry' : 'Log Past Work'}
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Fast, reliable logging for today or past dates
+            Log anything on any past date or today
           </DialogDescription>
         </DialogHeader>
 
@@ -160,6 +183,13 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
             <div className="p-2.5 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive flex items-center gap-2 font-medium">
               <AlertTriangleIcon className="h-4 w-4 shrink-0" />
               <span>{error}</span>
+            </div>
+          )}
+
+          {successToast && (
+            <div className="p-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2 font-medium animate-in fade-in">
+              <CheckCircle2Icon className="h-4 w-4 shrink-0 text-emerald-500" />
+              <span>{successToast}</span>
             </div>
           )}
 
@@ -210,23 +240,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
             )}
           </div>
 
-          {/* 2. Description Field */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground">
-              Description
-            </label>
-            <textarea
-              ref={descInputRef}
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What did you work on? (e.g. Completed clutch overhaul, inspected wiring)"
-              className="w-full rounded-lg border border-input bg-background p-3 text-sm shadow-xs transition-colors text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y min-h-[90px]"
-              required
-            />
-          </div>
-
-          {/* 3. Date Picker with Today & Yesterday Shortcuts */}
+          {/* 2. Date Picker with Today & Yesterday Shortcuts */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-foreground">
@@ -269,6 +283,31 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
                 required
               />
             </div>
+          </div>
+
+          {/* 3. Description Field */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-foreground">
+                Log Description
+              </label>
+              <span className="text-[10px] text-muted-foreground">Ctrl+Enter to save</span>
+            </div>
+            <textarea
+              ref={descInputRef}
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  submitForm(true);
+                }
+              }}
+              placeholder="What did you work on? (e.g. Changed oil, tightened brackets)"
+              className="w-full rounded-lg border border-input bg-background p-3 text-sm shadow-xs transition-colors text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y min-h-[90px]"
+              required
+            />
           </div>
 
           {/* Optional Extra Fields Accordion */}
@@ -375,26 +414,43 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
           </div>
 
           {/* Form Submit Actions */}
-          <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              size="default"
-              onClick={onClose}
-              className="h-10 px-4 text-xs font-medium"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="default"
-              size="default"
-              disabled={isSubmitting}
-              className="h-10 px-4 text-xs gap-1.5 font-medium"
-            >
-              <CheckCircle2Icon className="h-4 w-4" />
-              <span>{isSubmitting ? 'Saving...' : editingSubtask ? 'Save Changes' : 'Log Entry'}</span>
-            </Button>
+          <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 border-t border-border">
+            {!editingSubtask ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="default"
+                disabled={isSubmitting}
+                onClick={() => submitForm(true)}
+                className="h-10 px-3 text-xs font-medium order-2 sm:order-1"
+              >
+                Save &amp; Log Another
+              </Button>
+            ) : (
+              <div />
+            )}
+
+            <div className="flex items-center gap-2 justify-end order-1 sm:order-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="default"
+                onClick={onClose}
+                className="h-10 px-3.5 text-xs font-medium"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="default"
+                size="default"
+                disabled={isSubmitting}
+                className="h-10 px-4 text-xs gap-1.5 font-medium"
+              >
+                <CheckCircle2Icon className="h-4 w-4" />
+                <span>{isSubmitting ? 'Saving...' : editingSubtask ? 'Save Changes' : 'Log Entry'}</span>
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>
