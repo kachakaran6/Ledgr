@@ -111,14 +111,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 >
                   <div className="flex items-center gap-1.5 truncate">
                     {activeTitle ? (
-                      <span
-                        className="h-2 w-2 rounded-full shrink-0"
-                        style={{ backgroundColor: activeTitle.color || 'hsl(var(--primary))' }}
-                      />
+                      <span className="h-2 w-2 rounded-full shrink-0 bg-muted-foreground/60" />
                     ) : (
                       <FolderIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     )}
-                    <span className="truncate">{activeTitle ? activeTitle.name : 'All Titles'}</span>
+                    <span className="truncate font-heading font-medium">
+                      {activeTitle ? activeTitle.name : 'All Titles'}
+                    </span>
                   </div>
                   <ChevronDownIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-70" />
                 </Button>
@@ -132,7 +131,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                     <FolderIcon className="h-3.5 w-3.5 text-muted-foreground" />
                     <span>All Titles</span>
                   </div>
-                  {selectedTitleId === null && <CheckIcon className="h-3.5 w-3.5 text-primary" />}
+                  {selectedTitleId === null && <CheckIcon className="h-3.5 w-3.5 text-foreground" />}
                 </DropdownMenuItem>
 
                 {titles.length > 0 && (
@@ -148,18 +147,15 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                         onClick={() => setSelectedTitleId(title.id)}
                       >
                         <div className="flex items-center gap-2 truncate flex-1 min-w-0">
-                          <span
-                            className="h-2 w-2 rounded-full shrink-0"
-                            style={{ backgroundColor: title.color || 'hsl(var(--primary))' }}
-                          />
-                          <span className="truncate">{title.name}</span>
+                          <span className="h-2 w-2 rounded-full shrink-0 bg-muted-foreground/60" />
+                          <span className="truncate font-heading font-medium">{title.name}</span>
                         </div>
                         <div className="flex items-center gap-1 shrink-0 ml-1.5">
-                          <span className="text-[10px] text-muted-foreground mr-1">
+                          <span className="font-mono tabular-nums text-[10px] text-muted-foreground mr-1">
                             {title.subtask_count || 0}
                           </span>
                           {selectedTitleId === title.id && (
-                            <CheckIcon className="h-3.5 w-3.5 text-primary shrink-0" />
+                            <CheckIcon className="h-3.5 w-3.5 text-foreground shrink-0" />
                           )}
                           {onEditTitle && (
                             <button
@@ -198,7 +194,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={onAddTitle}
-                  className="gap-2 text-xs text-primary font-medium cursor-pointer"
+                  className="gap-2 text-xs text-foreground font-medium cursor-pointer"
                 >
                   <PlusIcon className="h-3.5 w-3.5" />
                   <span>Create New Title...</span>
@@ -211,7 +207,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={() => onOpenTaskPage(activeTitle.id)}
-                className="h-9 px-2 text-[11px] text-primary hover:bg-primary/10 border-primary/30 shrink-0 hidden sm:inline-flex"
+                className="h-9 px-2 text-[11px] text-foreground hover:bg-muted border-border shrink-0 hidden sm:inline-flex"
                 title={`Open separate page for ${activeTitle.name}`}
               >
                 <span>Task Page →</span>
@@ -222,7 +218,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  variant={datePreset !== 'all' ? 'default' : 'outline'}
+                  variant={datePreset !== 'all' ? 'secondary' : 'outline'}
                   size="sm"
                   className={`w-full sm:w-auto h-9 justify-between gap-1.5 px-2.5 sm:px-3 text-xs font-medium sm:min-w-[125px] ${
                     datePreset === 'all' ? 'bg-background' : ''
@@ -246,7 +242,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                     className="justify-between text-xs cursor-pointer"
                   >
                     <span>{p.label}</span>
-                    {datePreset === p.id && <CheckIcon className="h-3.5 w-3.5 text-primary" />}
+                    {datePreset === p.id && <CheckIcon className="h-3.5 w-3.5 text-foreground" />}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -293,7 +289,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           </div>
 
           {/* Entry count indicator (desktop only) */}
-          <span className="text-[11px] text-muted-foreground whitespace-nowrap hidden lg:inline px-1">
+          <span className="font-mono tabular-nums text-[11px] text-muted-foreground whitespace-nowrap hidden lg:inline px-1">
             {filteredCount} of {totalCount}
           </span>
 

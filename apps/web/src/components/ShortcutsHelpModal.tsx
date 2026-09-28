@@ -23,10 +23,10 @@ export const ShortcutsHelpModal: React.FC<ShortcutsHelpModalProps> = ({ isOpen, 
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center text-primary">
+            <div className="h-7 w-7 rounded-md bg-muted flex items-center justify-center text-foreground">
               <KeyboardIcon className="h-4 w-4" />
             </div>
-            <DialogTitle>Keyboard Shortcuts</DialogTitle>
+            <DialogTitle className="font-heading font-medium">Keyboard Shortcuts</DialogTitle>
           </div>
           <DialogDescription>
             Speed up your daily past work logging

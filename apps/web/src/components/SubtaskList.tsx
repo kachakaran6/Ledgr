@@ -61,10 +61,10 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
   if (subtasks.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 sm:p-16 text-center max-w-md mx-auto">
-        <div className="h-12 w-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-3 shadow-xs">
+        <div className="h-12 w-12 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground mb-3 shadow-xs">
           <CalendarIcon className="h-6 w-6" />
         </div>
-        <h3 className="text-base font-bold text-foreground">
+        <h3 className="font-heading font-medium text-base text-foreground">
           {hasActiveFilters ? 'No matching logs found' : 'No past work logged yet'}
         </h3>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -126,7 +126,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
     <div className="p-3 sm:p-6 space-y-5 max-w-5xl mx-auto">
       {/* Selection Mode Bulk Toolbar */}
       {isSelectionMode && (
-        <div className="sticky top-0 z-20 flex items-center justify-between p-2 rounded-xl bg-primary/10 border border-primary/20 text-xs font-medium text-foreground backdrop-blur-md shadow-xs mb-3">
+        <div className="sticky top-0 z-20 flex items-center justify-between p-2 rounded-xl bg-card border border-border text-xs font-medium text-foreground backdrop-blur-md shadow-xs mb-3">
           <div className="flex items-center gap-2">
             <Button
               variant="default"
@@ -144,7 +144,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
               )}
               <span>{isAllSelected ? 'Deselect All' : 'Select All Filtered'}</span>
             </Button>
-            <span className="text-muted-foreground text-xs font-semibold">
+            <span className="text-muted-foreground text-xs font-mono tabular-nums">
               {selectedSubtaskIds.size} of {subtasks.length} selected
             </span>
           </div>
@@ -161,15 +161,15 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
           {/* Clean Date Header */}
           <div className="sticky top-0 z-10 py-1.5 px-1 flex items-center justify-between bg-background/95 backdrop-blur-sm border-b border-border/60">
             <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-primary" />
-              <h3 className="text-xs font-bold tracking-tight text-foreground uppercase">
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+              <h3 className="font-heading font-medium text-xs tracking-tight text-foreground uppercase">
                 {group.displayDate}
               </h3>
-              <span className="text-[11px] text-muted-foreground font-normal">
+              <span className="font-mono tabular-nums text-[11px] text-muted-foreground font-normal">
                 ({group.date})
               </span>
             </div>
-            <span className="text-[11px] font-medium text-muted-foreground">
+            <span className="font-mono tabular-nums text-[11px] font-medium text-muted-foreground">
               {group.items.length} {group.items.length === 1 ? 'entry' : 'entries'}
             </span>
           </div>
@@ -178,6 +178,8 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
           <div className="space-y-2">
             {group.items.map((subtask) => {
               const isSelected = selectedSubtaskIds.has(subtask.id);
+              const isDone = subtask.status === 'done';
+              const isInProgress = subtask.status === 'in_progress';
 
               return (
                 <div
@@ -189,7 +191,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                   }}
                   className={`group relative rounded-xl border p-3.5 sm:p-4 transition-all shadow-xs ${
                     isSelected
-                      ? 'bg-primary/5 border-primary ring-1 ring-primary'
+                      ? 'bg-muted/40 border-foreground/30 ring-1 ring-border'
                       : 'bg-card border-border hover:border-border/90'
                   } ${isSelectionMode ? 'cursor-pointer' : ''}`}
                 >
@@ -202,12 +204,20 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSelectSubtask(subtask.id)}
-                            className="h-4 w-4 rounded text-primary focus:ring-ring border-input bg-background cursor-pointer"
+                            className="h-4 w-4 rounded accent-primary border-input bg-background cursor-pointer"
                           />
                         </div>
                       ) : (
-                        <div className="pt-0.5 shrink-0 text-primary">
-                          <CheckCircle2Icon className="h-4 w-4 text-primary/80" />
+                        <div className="pt-0.5 shrink-0">
+                          <CheckCircle2Icon
+                            className={`h-4 w-4 ${
+                              isDone
+                                ? 'text-[var(--status-done)]'
+                                : isInProgress
+                                ? 'text-[var(--status-in-progress)]'
+                                : 'text-[var(--status-cancelled)]'
+                            }`}
+                          />
                         </div>
                       )}
 
@@ -217,14 +227,9 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                         {!selectedTitleId && subtask.title && (
                           <div className="mb-1">
                             <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                                onOpenTaskPage ? 'cursor-pointer hover:opacity-80 active:scale-95' : ''
+                              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-heading font-medium border border-border bg-muted/40 text-foreground/80 ${
+                                onOpenTaskPage ? 'cursor-pointer hover:border-foreground/30 hover:text-foreground' : ''
                               } transition-all`}
-                              style={{
-                                borderColor: `${subtask.title.color || '#0d9488'}40`,
-                                backgroundColor: `${subtask.title.color || '#0d9488'}15`,
-                                color: subtask.title.color || '#0d9488',
-                              }}
                               onClick={(e) => {
                                 if (onOpenTaskPage) {
                                   e.stopPropagation();
@@ -233,10 +238,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                               }}
                               title={onOpenTaskPage ? `Open ${subtask.title.name} task details` : undefined}
                             >
-                              <span
-                                className="h-1.5 w-1.5 rounded-full"
-                                style={{ backgroundColor: subtask.title.color || '#0d9488' }}
-                              />
+                              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
                               {subtask.title.name}
                             </span>
                           </div>

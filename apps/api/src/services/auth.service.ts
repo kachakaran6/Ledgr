@@ -6,19 +6,20 @@ import type { SignUpInput, LoginInput, AuthSession } from '@ledgr/shared';
 export class AuthService {
   static async signUp(fastify: FastifyInstance, input: SignUpInput): Promise<AuthSession> {
     const db = getDatabase();
-    const existing = await db.getUserByEmail(input.email);
+    const email = input.email.trim().toLowerCase();
+    const existing = await db.getUserByEmail(email);
     if (existing) {
       throw fastify.httpErrors.conflict('Email is already registered');
     }
 
-    const salt = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(12);
     const passwordHash = await bcrypt.hash(input.password, salt);
-    const user = await db.createUser(input.email, passwordHash, input.name);
+    const user = await db.createUser(email, passwordHash, input.name?.trim());
 
     await db.createAuditLog(user.id, 'AUTH_SIGNUP', 'account', user.id, { email: user.email });
 
     const token = fastify.jwt.sign(
-      { id: user.id, email: user.email, name: user.name },
+      { sub: user.id, id: user.id, email: user.email, name: user.name },
       { expiresIn: '7d' }
     );
 
@@ -31,20 +32,22 @@ export class AuthService {
 
   static async login(fastify: FastifyInstance, input: LoginInput): Promise<AuthSession> {
     const db = getDatabase();
-    const user = await db.getUserByEmail(input.email);
+    const email = input.email.trim().toLowerCase();
+    const user = await db.getUserByEmail(email);
     if (!user) {
       throw fastify.httpErrors.unauthorized('Invalid email or password');
     }
 
     const isValid = await bcrypt.compare(input.password, user.password_hash);
     if (!isValid) {
+      await db.createAuditLog(user.id, 'AUTH_LOGIN_FAILED', 'account', user.id, { email });
       throw fastify.httpErrors.unauthorized('Invalid email or password');
     }
 
     await db.createAuditLog(user.id, 'AUTH_LOGIN', 'account', user.id, { email: user.email });
 
     const token = fastify.jwt.sign(
-      { id: user.id, email: user.email, name: user.name },
+      { sub: user.id, id: user.id, email: user.email, name: user.name },
       { expiresIn: '7d' }
     );
 

@@ -15,20 +15,20 @@ export const pastOnlyDateSchema = z
 
 // Auth Schemas
 export const SignUpSchema = z.object({
-  email: z.string().email('Valid email is required'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  name: z.string().min(1, 'Name is required').optional()
+  email: z.string().trim().toLowerCase().email('Valid email is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters').max(128, 'Password must not exceed 128 characters'),
+  name: z.string().trim().min(1, 'Name is required').max(100).optional()
 });
 
 export const LoginSchema = z.object({
-  email: z.string().email('Valid email is required'),
+  email: z.string().trim().toLowerCase().email('Valid email is required'),
   password: z.string().min(1, 'Password is required')
 });
 
 // Title Schemas
 export const CreateTitleSchema = z.object({
   name: z.string().trim().min(1, 'Title name is required').max(100, 'Title name cannot exceed 100 characters'),
-  color: z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'Valid hex color required').default('#3b82f6'),
+  color: z.string().optional().default('var(--muted-foreground)'),
   icon: z.string().max(32).default('folder'),
   sort_order: z.number().int().optional().default(0)
 });

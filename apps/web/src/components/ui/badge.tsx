@@ -11,9 +11,9 @@ function Badge({ className, variant = 'default', ...props }: BadgeProps) {
     secondary: 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
     destructive: 'border-transparent bg-destructive text-destructive-foreground shadow',
     outline: 'text-foreground border-border',
-    done: 'border-transparent bg-status-done text-status-done-foreground shadow-sm font-medium',
-    inProgress: 'border-transparent bg-status-inprogress text-status-inprogress-foreground shadow-sm font-medium',
-    cancelled: 'border-transparent bg-status-cancelled text-status-cancelled-foreground shadow-sm font-medium',
+    done: 'border-transparent bg-status-done text-primary-foreground shadow-sm font-medium',
+    inProgress: 'border-transparent bg-status-inprogress text-primary-foreground shadow-sm font-medium',
+    cancelled: 'border-transparent bg-status-cancelled text-primary-foreground shadow-sm font-medium',
     accent: 'border-transparent bg-accent text-accent-foreground',
   };
 

@@ -4,7 +4,6 @@ import {
   SearchIcon,
   FolderIcon,
   ArrowRightIcon,
-  CalendarIcon,
   EditIcon,
   TrashIcon,
 } from './icons';
@@ -107,10 +106,10 @@ export const TaskList: React.FC<TaskListProps> = ({
       {/* Empty State */}
       {tasks.length === 0 && (
         <div className="p-10 text-center rounded-xl border border-dashed border-border bg-card/40 my-6">
-          <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-2.5">
+          <div className="h-10 w-10 rounded-xl bg-muted text-foreground flex items-center justify-center mx-auto mb-2.5">
             <FolderIcon className="h-5 w-5" />
           </div>
-          <h3 className="text-sm font-bold text-foreground">No tasks yet</h3>
+          <h3 className="font-heading font-medium text-sm text-foreground">No tasks yet</h3>
           <p className="text-xs text-muted-foreground mt-0.5 mb-4">
             Create a task to start logging subtasks and work history.
           </p>
@@ -139,26 +138,20 @@ export const TaskList: React.FC<TaskListProps> = ({
               <div
                 key={task.id}
                 onClick={() => onSelectTask(task.id)}
-                className="p-3.5 rounded-xl border border-border bg-card hover:border-primary/50 hover:bg-muted/30 transition-all cursor-pointer flex items-center justify-between gap-3 group"
+                className="p-3.5 rounded-xl border border-border bg-card hover:bg-muted/40 transition-all cursor-pointer flex items-center justify-between gap-3 group"
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <span
-                    className="h-3 w-3 rounded-full shrink-0"
-                    style={{ backgroundColor: task.color || '#0d9488' }}
-                  />
+                  <span className="h-2 w-2 rounded-full shrink-0 bg-muted-foreground/60" />
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                    <h3 className="font-heading font-medium text-sm text-foreground truncate">
                       {task.name}
                     </h3>
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
-                      <span>{count} {count === 1 ? 'subtask' : 'subtasks'}</span>
+                      <span className="font-mono tabular-nums">{count} {count === 1 ? 'subtask' : 'subtasks'}</span>
                       {timeAgo && (
                         <>
                           <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <CalendarIcon className="h-2.5 w-2.5" />
-                            <span>Started {timeAgo}</span>
-                          </span>
+                          <span className="font-mono tabular-nums">Started {timeAgo}</span>
                         </>
                       )}
                     </div>
@@ -192,7 +185,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                     </button>
                   </div>
 
-                  <span className="text-xs text-primary font-medium flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span className="text-xs text-muted-foreground group-hover:text-foreground font-medium flex items-center gap-1 group-hover:translate-x-0.5 transition-all">
                     <span>Open</span>
                     <ArrowRightIcon className="h-3.5 w-3.5" />
                   </span>

@@ -170,7 +170,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="w-full max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-base sm:text-lg font-bold">
+          <DialogTitle className="font-heading font-medium text-base sm:text-lg">
             {editingSubtask ? 'Edit Log Entry' : 'Log Past Work'}
           </DialogTitle>
           <DialogDescription className="text-xs">
@@ -187,8 +187,8 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
           )}
 
           {successToast && (
-            <div className="p-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2 font-medium animate-in fade-in">
-              <CheckCircle2Icon className="h-4 w-4 shrink-0 text-emerald-500" />
+            <div className="p-2 rounded-lg bg-[var(--status-done)]/15 border border-[var(--status-done)]/30 text-xs text-[var(--status-done)] flex items-center gap-2 font-medium animate-in fade-in">
+              <CheckCircle2Icon className="h-4 w-4 shrink-0 text-[var(--status-done)]" />
               <span>{successToast}</span>
             </div>
           )}
@@ -203,7 +203,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
                 <button
                   type="button"
                   onClick={onCreateTitlePrompt}
-                  className="text-xs text-primary hover:underline font-medium inline-flex items-center gap-0.5"
+                  className="text-xs text-foreground hover:underline font-medium inline-flex items-center gap-0.5"
                 >
                   <PlusIcon className="h-3 w-3" />
                   <span>New Title</span>
@@ -214,7 +214,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
               <select
                 value={titleId}
                 onChange={(e) => setTitleId(e.target.value)}
-                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-heading font-medium"
               >
                 {titles.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -252,7 +252,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
                   onClick={() => setEntryDate(today)}
                   className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                     entryDate === today
-                      ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
+                      ? 'bg-foreground text-background font-semibold shadow-xs'
                       : 'bg-muted text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -263,7 +263,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
                   onClick={() => setEntryDate(yesterday)}
                   className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                     entryDate === yesterday
-                      ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
+                      ? 'bg-foreground text-background font-semibold shadow-xs'
                       : 'bg-muted text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -279,7 +279,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
                 max={today}
                 value={entryDate}
                 onChange={(e) => setEntryDate(e.target.value)}
-                className="pl-9 h-10 text-sm w-full bg-background rounded-lg"
+                className="pl-9 h-10 text-sm w-full bg-background rounded-lg font-mono tabular-nums"
                 required
               />
             </div>
@@ -389,7 +389,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
                         value={cost}
                         onChange={(e) => setCost(e.target.value)}
                         placeholder="0.00"
-                        className="pl-7 h-9 text-xs"
+                        className="pl-7 h-9 text-xs font-mono tabular-nums"
                       />
                     </div>
                   </div>
@@ -404,7 +404,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
                         value={timeSpent}
                         onChange={(e) => setTimeSpent(e.target.value)}
                         placeholder="30"
-                        className="pl-7 h-9 text-xs"
+                        className="pl-7 h-9 text-xs font-mono tabular-nums"
                       />
                     </div>
                   </div>

@@ -12,17 +12,6 @@ interface AddTitleModalProps {
   editingTitle?: Title | null;
 }
 
-const COLOR_PALETTE = [
-  '#0d9488', // teal (primary)
-  '#059669', // emerald
-  '#2563eb', // blue
-  '#7c3aed', // violet
-  '#d97706', // amber
-  '#e11d48', // rose
-  '#0891b2', // cyan
-  '#475569', // slate
-];
-
 export const AddTitleModal: React.FC<AddTitleModalProps> = ({
   isOpen,
   onClose,
@@ -30,17 +19,14 @@ export const AddTitleModal: React.FC<AddTitleModalProps> = ({
   editingTitle,
 }) => {
   const [name, setName] = useState('');
-  const [color, setColor] = useState('#0d9488');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (editingTitle) {
       setName(editingTitle.name);
-      setColor(editingTitle.color || '#0d9488');
     } else {
       setName('');
-      setColor('#0d9488');
     }
     setError(null);
   }, [editingTitle, isOpen]);
@@ -56,7 +42,7 @@ export const AddTitleModal: React.FC<AddTitleModalProps> = ({
     try {
       await onSave({
         name: name.trim(),
-        color,
+        color: editingTitle?.color || 'var(--muted-foreground)',
         icon: 'folder',
         sort_order: 0,
       });
@@ -73,10 +59,10 @@ export const AddTitleModal: React.FC<AddTitleModalProps> = ({
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center text-primary">
+            <div className="h-7 w-7 rounded-md bg-muted flex items-center justify-center text-foreground">
               <FolderIcon className="h-4 w-4" />
             </div>
-            <DialogTitle>
+            <DialogTitle className="font-heading font-medium">
               {editingTitle ? 'Edit Title Category' : 'Create New Title'}
             </DialogTitle>
           </div>
@@ -101,26 +87,6 @@ export const AddTitleModal: React.FC<AddTitleModalProps> = ({
               required
               disabled={isSubmitting}
             />
-          </div>
-
-          {/* Color Picker */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-foreground">
-              Category Color
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {COLOR_PALETTE.map((c) => (
-                <button
-                  type="button"
-                  key={c}
-                  onClick={() => setColor(c)}
-                  className={`h-6 w-6 rounded-full transition-transform ${
-                    color === c ? 'scale-125 ring-2 ring-primary ring-offset-2' : 'hover:scale-110'
-                  }`}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </div>
           </div>
 
           <div className="pt-2 flex items-center justify-end gap-2 border-t border-border">

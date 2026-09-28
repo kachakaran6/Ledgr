@@ -59,10 +59,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center text-primary">
+            <div className="h-7 w-7 rounded-md bg-muted flex items-center justify-center text-foreground">
               <DownloadIcon className="h-4 w-4" />
             </div>
-            <DialogTitle>Export Proof of Work</DialogTitle>
+            <DialogTitle className="font-heading font-medium">Export Proof of Work</DialogTitle>
           </div>
           <DialogDescription>
             Generate client-ready reports and spreadsheet audits
@@ -72,9 +72,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         <div className="space-y-4 pt-2">
           {/* Selected Data Summary */}
           <div className="p-3 rounded-lg bg-muted/60 border border-border flex items-center gap-3">
-            <FilterIcon className="h-4 w-4 text-primary flex-shrink-0" />
+            <FilterIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             <div className="text-xs">
-              <p className="font-semibold text-foreground">
+              <p className="font-semibold text-foreground font-mono tabular-nums">
                 {selectedCount > 0 ? `${selectedCount} Selected Records` : `${subtasks.length} Filtered Records`}
               </p>
               <p className="text-muted-foreground text-[11px]">
@@ -95,8 +95,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 onClick={() => setFormat('pdf')}
                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${
                   format === 'pdf'
-                    ? 'bg-primary/10 border-primary text-primary shadow-xs'
-                    : 'bg-card border-border text-foreground hover:bg-muted'
+                    ? 'bg-muted border-foreground/40 text-foreground ring-1 ring-border shadow-xs'
+                    : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 }`}
               >
                 <FileTextIcon className="h-5 w-5" />
@@ -112,8 +112,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 onClick={() => setFormat('xlsx')}
                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${
                   format === 'xlsx'
-                    ? 'bg-status-done/10 border-status-done text-status-done shadow-xs'
-                    : 'bg-card border-border text-foreground hover:bg-muted'
+                    ? 'bg-muted border-foreground/40 text-foreground ring-1 ring-border shadow-xs'
+                    : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 }`}
               >
                 <FileSpreadsheetIcon className="h-5 w-5" />
@@ -129,8 +129,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 onClick={() => setFormat('csv')}
                 className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${
                   format === 'csv'
-                    ? 'bg-primary/10 border-primary text-primary shadow-xs'
-                    : 'bg-card border-border text-foreground hover:bg-muted'
+                    ? 'bg-muted border-foreground/40 text-foreground ring-1 ring-border shadow-xs'
+                    : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 }`}
               >
                 <FileCodeIcon className="h-5 w-5" />

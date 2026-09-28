@@ -1,86 +1,91 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
+    /* Typography Tokens */
+    --font-heading: 'Fraunces', Georgia, serif;
+    --font-body: 'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    /* Light Mode Palette: Warm, Grounded Paper-and-Ink */
+    --background: #FAF7F0;
+    --card: #FFFFFF;
+    --card-foreground: #26241F;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover: #FFFFFF;
+    --popover-foreground: #26241F;
 
-    /* Deliberate refined emerald/teal accent - not default indigo/blue-600 */
-    --primary: 173 80% 34%;
-    --primary-foreground: 0 0% 100%;
+    --border: #E8E1D3;
+    --input: #E8E1D3;
+    --foreground: #26241F;
 
-    --secondary: 210 25% 93%;
-    --secondary-foreground: 222 47% 11%;
+    --muted: #F2ECE1;
+    --muted-foreground: #6B6558;
 
-    --muted: 210 25% 94%;
-    --muted-foreground: 215 16% 47%;
+    --secondary: #EDE7DC;
+    --secondary-foreground: #26241F;
 
-    --accent: 210 25% 90%;
-    --accent-foreground: 222 47% 11%;
+    --accent: #E8E1D3;
+    --accent-foreground: #26241F;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --primary: #B5502E;
+    --primary-foreground: #FFFFFF;
 
-    --border: 214 20% 88%;
-    --input: 214 20% 88%;
-    --ring: 173 80% 34%;
+    --destructive: #8B6F6F;
+    --destructive-foreground: #FFFFFF;
 
+    --ring: #B5502E;
     --radius: 0.625rem;
 
-    /* Semantic status tokens */
-    --status-done: 142 70% 40%;
-    --status-done-foreground: 0 0% 100%;
-    --status-in-progress: 38 92% 45%;
-    --status-in-progress-foreground: 0 0% 100%;
-    --status-cancelled: 0 72% 51%;
-    --status-cancelled-foreground: 0 0% 100%;
+    /* Semantic Status Tokens (semantic only, not for general accent) */
+    --status-done: #4B7A5C;
+    --status-in-progress: #B8862F;
+    --status-cancelled: #8B6F6F;
   }
 
   .dark {
-    --background: 224 45% 7%;
-    --foreground: 210 20% 98%;
+    /* Typography Tokens */
+    --font-heading: 'Fraunces', Georgia, serif;
+    --font-body: 'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
 
-    --card: 224 40% 11%;
-    --card-foreground: 210 20% 98%;
+    /* Dark Mode Palette: Warm Charcoal & Grounded Ink */
+    --background: #1C1B18;
+    --card: #26241F;
+    --card-foreground: #EDE8DC;
 
-    --popover: 224 38% 14%;
-    --popover-foreground: 210 20% 98%;
+    --popover: #26241F;
+    --popover-foreground: #EDE8DC;
 
-    /* Deliberate refined teal/emerald accent for dark mode */
-    --primary: 173 75% 42%;
-    --primary-foreground: 224 45% 7%;
+    --border: #38352E;
+    --input: #38352E;
+    --foreground: #EDE8DC;
 
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 20% 98%;
+    --muted: #2A2722;
+    --muted-foreground: #9C9484;
 
-    --muted: 217 33% 16%;
-    --muted-foreground: 215 20% 65%;
+    --secondary: #2C2923;
+    --secondary-foreground: #EDE8DC;
 
-    --accent: 217 33% 20%;
-    --accent-foreground: 210 20% 98%;
+    --accent: #38352E;
+    --accent-foreground: #EDE8DC;
 
-    --destructive: 0 62% 45%;
-    --destructive-foreground: 0 0% 100%;
+    --primary: #D97B4F;
+    --primary-foreground: #1C1B18;
 
-    --border: 217 30% 20%;
-    --input: 217 30% 20%;
-    --ring: 173 75% 42%;
+    --destructive: #A67A7A;
+    --destructive-foreground: #1C1B18;
 
-    /* Semantic status tokens for dark mode */
-    --status-done: 142 60% 35%;
-    --status-done-foreground: 142 70% 95%;
-    --status-in-progress: 38 85% 40%;
-    --status-in-progress-foreground: 38 90% 95%;
-    --status-cancelled: 0 65% 45%;
-    --status-cancelled-foreground: 0 70% 95%;
+    --ring: #D97B4F;
+
+    /* Semantic Status Tokens for Dark Mode */
+    --status-done: #6FA383;
+    --status-in-progress: #D4A544;
+    --status-cancelled: #A67A7A;
   }
 
   * {
@@ -88,28 +93,26 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-body);
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     touch-action: manipulation;
   }
+
+  h1, h2, h3, h4, .font-heading {
+    font-family: var(--font-heading);
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
 }
 
-/* Glassmorphism & Elevation */
-.elevated-card {
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
-}
-
-.elevated-floating {
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-}
-
-.dark .elevated-floating {
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
-}
-
-/* Custom Sleek Scrollbar */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -120,12 +123,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.25);
+  background: var(--border);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.45);
+  background: var(--muted-foreground);
 }
 
 /* Mobile Safe Areas */

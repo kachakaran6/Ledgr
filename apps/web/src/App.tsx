@@ -350,7 +350,7 @@ export const App: React.FC = () => {
             id: newId,
             user_id: user?.id || '',
             name: input.name,
-            color: input.color || '#0d9488',
+            color: input.color || 'var(--muted-foreground)',
             icon: input.icon || 'folder',
             is_archived: false,
             sort_order: 0,
@@ -413,7 +413,7 @@ export const App: React.FC = () => {
               setEditingTitle(activeTask);
               await saveTitleMutation.mutateAsync({
                 name: input.name,
-                color: input.color || activeTask.color || '#0d9488',
+                color: input.color || activeTask.color || 'var(--muted-foreground)',
                 icon: activeTask.icon || 'folder',
                 sort_order: activeTask.sort_order || 0,
               });
@@ -482,14 +482,14 @@ export const App: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('tasks')}
-            className={`py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
+            className={`py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-all flex items-center gap-1.5 ${
               activeTab === 'tasks'
-                ? 'border-primary text-primary'
+                ? 'border-primary text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             <span>Tasks</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted font-medium text-muted-foreground">
+            <span className="font-mono tabular-nums text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
               {titles.length}
             </span>
           </button>
@@ -497,14 +497,14 @@ export const App: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('ledger')}
-            className={`py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
+            className={`py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-all flex items-center gap-1.5 ${
               activeTab === 'ledger'
-                ? 'border-primary text-primary'
+                ? 'border-primary text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             <span>All Logs</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted font-medium text-muted-foreground">
+            <span className="font-mono tabular-nums text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
               {totalCount}
             </span>
           </button>
@@ -584,7 +584,7 @@ export const App: React.FC = () => {
               setIsAddSubtaskOpen(true);
             }
           }}
-          className="h-12 w-12 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg flex items-center justify-center transition-transform active:scale-95"
+          className="h-12 w-12 rounded-full bg-primary hover:opacity-90 text-primary-foreground shadow-lg flex items-center justify-center transition-transform active:scale-95"
           title={activeTab === 'tasks' ? 'Add Task' : 'Log Past Work'}
         >
           <PlusIcon className="h-6 w-6" />
@@ -595,7 +595,7 @@ export const App: React.FC = () => {
       {isSelectionMode && selectedSubtaskIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[92%] sm:w-auto min-w-[320px] p-2.5 rounded-xl bg-card border border-border text-foreground shadow-2xl flex items-center justify-between gap-4 animate-in slide-in-from-bottom-5">
           <div className="flex items-center gap-2 pl-2">
-            <span className="font-bold text-sm text-primary">
+            <span className="font-mono tabular-nums font-bold text-sm text-foreground">
               {selectedSubtaskIds.size}
             </span>
             <span className="text-xs font-semibold text-muted-foreground">records selected</span>

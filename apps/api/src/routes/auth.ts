@@ -5,7 +5,14 @@ import { getDatabase } from '../db';
 
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
   // Sign up
-  fastify.post('/signup', async (request, reply) => {
+  fastify.post('/signup', {
+    config: {
+      rateLimit: {
+        max: 25,
+        timeWindow: '15 minutes'
+      }
+    }
+  }, async (request, reply) => {
     const parseRes = SignUpSchema.safeParse(request.body);
     if (!parseRes.success) {
       throw fastify.httpErrors.badRequest(parseRes.error.errors[0]?.message || 'Invalid signup details');
@@ -15,7 +22,14 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Login
-  fastify.post('/login', async (request, reply) => {
+  fastify.post('/login', {
+    config: {
+      rateLimit: {
+        max: 25,
+        timeWindow: '15 minutes'
+      }
+    }
+  }, async (request, reply) => {
     const parseRes = LoginSchema.safeParse(request.body);
     if (!parseRes.success) {
       throw fastify.httpErrors.badRequest(parseRes.error.errors[0]?.message || 'Invalid login details');

@@ -38,13 +38,13 @@ export async function exportDocuments({ format, subtasks, userName = 'Technician
 function exportClientPdf(subtasks: Subtask[], userName: string, filename: string) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-  // Header Styling
+  // Header Styling: Warm paper and ink ledger feel
   doc.setFontSize(22);
-  doc.setTextColor(15, 23, 42); // slate-900
-  doc.text('LogPast — Proof of Work', 14, 20);
+  doc.setTextColor(38, 36, 31); // #26241F
+  doc.text('Ledgr — Proof of Work', 14, 20);
 
   doc.setFontSize(10);
-  doc.setTextColor(100, 116, 139); // slate-500
+  doc.setTextColor(107, 101, 88); // #6B6558
   doc.text(`Technician / User: ${userName}`, 14, 28);
   doc.text(`Report Generated: ${new Date().toLocaleString()}`, 14, 33);
   doc.text(`Total Tasks Logged: ${subtasks.length}`, 14, 38);
@@ -66,7 +66,7 @@ function exportClientPdf(subtasks: Subtask[], userName: string, filename: string
     }
 
     doc.setFontSize(13);
-    doc.setTextColor(37, 99, 235); // brand-600
+    doc.setTextColor(38, 36, 31); // #26241F
     doc.text(`• ${titleName} (${tasks.length})`, 14, startY);
     startY += 4;
 
@@ -85,17 +85,17 @@ function exportClientPdf(subtasks: Subtask[], userName: string, filename: string
       body: tableData,
       theme: 'grid',
       headStyles: {
-        fillColor: [15, 23, 42],
-        textColor: [255, 255, 255],
+        fillColor: [38, 36, 31],
+        textColor: [250, 247, 240],
         fontSize: 8.5,
         fontStyle: 'bold'
       },
       bodyStyles: {
         fontSize: 8.5,
-        textColor: [30, 41, 59]
+        textColor: [38, 36, 31]
       },
       alternateRowStyles: {
-        fillColor: [248, 250, 252]
+        fillColor: [250, 247, 240]
       },
       margin: { left: 14, right: 14 }
     });

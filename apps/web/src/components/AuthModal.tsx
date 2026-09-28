@@ -3,9 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Separator } from './ui/separator';
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
-import { SparklesIcon, ArrowRightIcon, EyeIcon, EyeOffIcon } from './icons';
+import { ArrowRightIcon, EyeIcon, EyeOffIcon } from './icons';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -13,7 +12,7 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
-  const { login, signup, loginDemo } = useAuth();
+  const { login, signup } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
@@ -42,24 +41,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleDemo = async () => {
-    setIsSubmitting(true);
-    try {
-      await loginDemo();
-      onClose();
-    } catch (err: any) {
-      setError(err.message || 'Demo login failed');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader className="space-y-1">
-          <DialogTitle>
-            {mode === 'login' ? 'Sign In to LogPast' : 'Create an Account'}
+          <DialogTitle className="font-heading font-medium">
+            {mode === 'login' ? 'Sign In to Ledgr' : 'Create an Account'}
           </DialogTitle>
           <DialogDescription>
             Postgres RLS & JWT Scoped Data Isolation
@@ -74,26 +61,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             </TabsList>
           </Tabs>
 
-          <Button
-            type="button"
-            variant="default"
-            className="w-full gap-2 font-medium"
-            onClick={handleDemo}
-            disabled={isSubmitting}
-          >
-            <SparklesIcon className="h-4 w-4" />
-            <span>Instant Demo Access (One-Click)</span>
-          </Button>
-
-          <div className="relative flex items-center justify-center">
-            <Separator />
-            <span className="absolute bg-card px-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
-              Or with email
-            </span>
-          </div>
-
           {error && (
-            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive font-medium">
+            <div className="p-2.5 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive font-medium">
               {error}
             </div>
           )}
@@ -111,6 +80,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   placeholder="Alex Morgan"
                   required
                   disabled={isSubmitting}
+                  className="h-9 text-xs bg-background"
                 />
               </div>
             )}
@@ -123,9 +93,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
+                placeholder="name@example.com"
                 required
                 disabled={isSubmitting}
+                className="h-9 text-xs bg-background"
               />
             </div>
 
@@ -142,7 +113,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   required
                   minLength={8}
                   disabled={isSubmitting}
-                  className="pr-10"
+                  className="h-9 text-xs pr-10 bg-background"
                 />
                 <button
                   type="button"
@@ -151,21 +122,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   title={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
-                    <EyeOffIcon className="h-4 w-4" />
+                    <EyeOffIcon className="h-3.5 w-3.5" />
                   ) : (
-                    <EyeIcon className="h-4 w-4" />
+                    <EyeIcon className="h-3.5 w-3.5" />
                   )}
                 </button>
               </div>
+              {mode === 'signup' && (
+                <p className="text-[10px] text-muted-foreground">Minimum 8 characters</p>
+              )}
             </div>
 
             <Button
               type="submit"
-              variant="secondary"
-              className="w-full gap-1.5 font-medium mt-2"
+              variant="default"
+              className="w-full gap-1.5 font-medium h-9 text-xs mt-3"
               disabled={isSubmitting}
             >
-              <span>{mode === 'login' ? 'Sign In' : 'Create Account'}</span>
+              <span>{isSubmitting ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}</span>
               <ArrowRightIcon className="h-3.5 w-3.5" />
             </Button>
           </form>

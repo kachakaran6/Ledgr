@@ -162,7 +162,7 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
                   if (e.key === 'Enter') handleSaveTitle();
                   if (e.key === 'Escape') setIsEditingTitle(false);
                 }}
-                className="h-10 text-base font-bold flex-1"
+                className="font-heading font-medium h-10 text-base flex-1"
                 placeholder="Task title..."
                 disabled={isSavingTitle}
               />
@@ -191,13 +191,10 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
           ) : (
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
-                <span
-                  className="h-3 w-3 rounded-full shrink-0"
-                  style={{ backgroundColor: task.color || '#0d9488' }}
-                />
+                <span className="h-2 w-2 rounded-full shrink-0 bg-muted-foreground/60" />
                 <h1
                   onClick={() => setIsEditingTitle(true)}
-                  className="text-lg sm:text-xl font-bold text-foreground truncate cursor-pointer hover:underline underline-offset-4"
+                  className="font-heading font-medium text-lg sm:text-xl text-foreground truncate cursor-pointer hover:underline underline-offset-4"
                   title="Click to edit title"
                 >
                   {task.name}
@@ -212,7 +209,7 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
                 </button>
               </div>
 
-              <span className="text-xs text-muted-foreground shrink-0">
+              <span className="font-mono tabular-nums text-xs text-muted-foreground shrink-0">
                 {subtasks.length} {subtasks.length === 1 ? 'subtask' : 'subtasks'}
               </span>
             </div>
@@ -238,14 +235,14 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
                 autoFocus
               />
 
-              <div className="flex items-center justify-between gap-1.5 flex-wrap sm:flex-nowrap">
-                <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
                   <Input
                     type="date"
                     max={today}
                     value={entryDate}
                     onChange={(e) => setEntryDate(e.target.value)}
-                    className="h-8 text-xs flex-1 bg-background"
+                    className="h-8 text-xs flex-1 bg-background font-mono tabular-nums"
                     disabled={isAdding}
                   />
 
@@ -254,7 +251,7 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
                     variant={entryDate === today ? 'secondary' : 'outline'}
                     size="sm"
                     onClick={() => setEntryDate(today)}
-                    className="h-8 px-2 text-[11px]"
+                    className="h-8 px-2.5 text-[11px] shrink-0"
                   >
                     Today
                   </Button>
@@ -263,7 +260,7 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
                     variant={entryDate === yesterday ? 'secondary' : 'outline'}
                     size="sm"
                     onClick={() => setEntryDate(yesterday)}
-                    className="h-8 px-2 text-[11px]"
+                    className="h-8 px-2.5 text-[11px] shrink-0"
                   >
                     Yesterday
                   </Button>
@@ -273,7 +270,7 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
                   type="submit"
                   disabled={isAdding || !desc.trim()}
                   size="sm"
-                  className="h-8 px-3 text-xs gap-1 font-semibold ml-auto"
+                  className="h-8 px-3 text-xs gap-1 font-semibold shrink-0 w-full sm:w-auto"
                 >
                   <PlusIcon className="h-3.5 w-3.5" />
                   <span>Add Subtask</span>
@@ -289,7 +286,7 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
             <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
               Subtasks
             </h3>
-            <span className="text-[11px] text-muted-foreground">
+            <span className="font-mono tabular-nums text-[11px] text-muted-foreground">
               {subtasks.length} total
             </span>
           </div>
@@ -309,6 +306,7 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
               {sortedSubtasks.map((st) => {
                 const displayDate = formatDisplayDate(st.entry_date);
                 const isDone = st.status === 'done';
+                const isInProgress = st.status === 'in_progress';
 
                 return (
                   <div
@@ -317,7 +315,13 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <CheckCircle2Icon
-                        className={`h-4 w-4 shrink-0 ${isDone ? 'text-primary' : 'text-amber-500'}`}
+                        className={`h-4 w-4 shrink-0 ${
+                          isDone
+                            ? 'text-[var(--status-done)]'
+                            : isInProgress
+                            ? 'text-[var(--status-in-progress)]'
+                            : 'text-[var(--status-cancelled)]'
+                        }`}
                       />
                       <p className="text-xs sm:text-sm text-foreground truncate flex-1">
                         {st.description}
@@ -325,7 +329,7 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="font-mono tabular-nums text-[11px] text-muted-foreground">
                         {displayDate}
                       </span>
 
