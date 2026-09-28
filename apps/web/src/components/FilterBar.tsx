@@ -32,6 +32,7 @@ interface FilterBarProps {
   onEditTitle?: (title: Title) => void;
   onDeleteTitle?: (titleId: string) => void;
   onOpenAddSubtask: () => void;
+  onOpenTaskPage?: (taskId: string) => void;
 }
 
 const PRESET_OPTIONS: Array<{ id: DatePreset; label: string }> = [
@@ -51,6 +52,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onEditTitle,
   onDeleteTitle,
   onOpenAddSubtask,
+  onOpenTaskPage,
 }) => {
   const {
     selectedTitleId,
@@ -203,6 +205,18 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {activeTitle && onOpenTaskPage && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenTaskPage(activeTitle.id)}
+                className="h-9 px-2 text-[11px] text-primary hover:bg-primary/10 border-primary/30 shrink-0 hidden sm:inline-flex"
+                title={`Open separate page for ${activeTitle.name}`}
+              >
+                <span>Task Page →</span>
+              </Button>
+            )}
 
             {/* 2. Date Range Dropdown */}
             <DropdownMenu>

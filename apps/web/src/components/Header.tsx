@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  HistoryIcon,
   CloudSlashIcon,
   MoonIcon,
   SunIcon,
@@ -17,7 +16,6 @@ import { useAuth } from '../context/AuthContext';
 import { useUI } from '../context/UIContext';
 import { useSyncStatus } from '../lib/sync';
 import { Button } from './ui/button';
-import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import {
   DropdownMenu,
@@ -44,19 +42,11 @@ export const Header: React.FC = () => {
   return (
     <header className="sticky top-0 z-30 w-full border-b border-border bg-card/95 backdrop-blur-md">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 h-13 py-2 flex items-center justify-between gap-3">
-        {/* Brand Group */}
-        <div className="flex items-center gap-2.5">
-          <div className="h-7 w-7 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold text-xs shadow-xs">
-            <HistoryIcon className="h-4 w-4" />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm sm:text-base font-bold tracking-tight text-foreground">
-              LogPast
-            </span>
-            <Badge variant="outline" className="text-[9px] py-0 px-1 font-mono uppercase tracking-wider text-muted-foreground border-border">
-              Ledger
-            </Badge>
-          </div>
+        {/* Brand */}
+        <div className="flex items-center gap-2">
+          <span className="text-base sm:text-lg font-bold tracking-tight text-foreground">
+            Ledgr
+          </span>
         </div>
 
         {/* Header Actions */}
@@ -98,7 +88,7 @@ export const Header: React.FC = () => {
 
           <Separator orientation="vertical" className="h-4" />
 
-          {/* Select Mode Toggle */}
+          {/* Select Mode Toggle (hidden on mobile to prevent overflow) */}
           <Button
             variant={isSelectionMode ? 'default' : 'ghost'}
             size="sm"
@@ -106,7 +96,7 @@ export const Header: React.FC = () => {
               setIsSelectionMode(!isSelectionMode);
               if (isSelectionMode) clearSelectedSubtasks();
             }}
-            className="h-7 px-2.5 text-xs gap-1.5 font-medium"
+            className="hidden sm:inline-flex h-7 px-2.5 text-xs gap-1.5 font-medium"
           >
             {isSelectionMode ? (
               <CheckSquareIcon className="h-3.5 w-3.5" />

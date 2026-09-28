@@ -4,6 +4,8 @@ import { PlusIcon, DownloadIcon } from './components/icons';
 import { Header } from './components/Header';
 import { FilterBar } from './components/FilterBar';
 import { SubtaskList } from './components/SubtaskList';
+import { TaskList } from './components/TaskList';
+import { TaskDetailPage } from './components/TaskDetailPage';
 import { AddSubtaskModal } from './components/AddSubtaskModal';
 import { AddTitleModal } from './components/AddTitleModal';
 import { ExportModal } from './components/ExportModal';
@@ -48,6 +50,47 @@ export const App: React.FC = () => {
 
   const [editingSubtask, setEditingSubtask] = useState<Subtask | null>(null);
   const [editingTitle, setEditingTitle] = useState<Title | null>(null);
+
+  // Active Task for dedicated separate page
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('taskId') || params.get('task') || null;
+  });
+
+  // Main screen active tab: 'tasks' (default) vs 'ledger'
+  const [activeTab, setActiveTab] = useState<'tasks' | 'ledger'>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return (params.get('tab') as 'tasks' | 'ledger') || 'tasks';
+  });
+
+  // Sync activeTaskId and activeTab with URL query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (activeTaskId) {
+      params.set('taskId', activeTaskId);
+    } else {
+      params.delete('taskId');
+      params.delete('task');
+    }
+    if (activeTab === 'ledger') {
+      params.set('tab', 'ledger');
+    } else {
+      params.delete('tab');
+    }
+    const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+    window.history.replaceState({}, '', newUrl);
+  }, [activeTaskId, activeTab]);
+
+  // Handle browser Back / Forward buttons cleanly
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      setActiveTaskId(params.get('taskId') || params.get('task') || null);
+      setActiveTab((params.get('tab') as 'tasks' | 'ledger') || 'tasks');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Global Keyboard Shortcuts
   useEffect(() => {
@@ -101,7 +144,49 @@ export const App: React.FC = () => {
     enabled: !!user && !!api.getToken(),
   });
 
-  // 2. Fetch Subtasks Query
+  // 2. Fetch All User Subtasks (for task statistics on home screen)
+  const { data: allUserSubtasks = [] } = useQuery<Subtask[]>({
+    queryKey: ['allUserSubtasks', user?.id],
+    queryFn: async () => {
+      try {
+        const serverData = await api.getSubtasks({ limit: 1000 });
+        if (serverData && Array.isArray(serverData.items)) {
+          await localDb.subtasks.bulkPut(serverData.items);
+          return serverData.items;
+        }
+      } catch {
+        // Fallback to Dexie
+      }
+      const local = await localDb.subtasks.toArray();
+      return local.filter((s) => !s.deleted_at && (!user?.id || s.user_id === user.id));
+    },
+    enabled: !!user && !!api.getToken(),
+  });
+
+  // 3. Fetch Subtasks Query for Active Task (Separate Page)
+  const { data: activeTaskSubtasks = [], isLoading: isLoadingTaskSubtasks } = useQuery<Subtask[]>({
+    queryKey: ['activeTaskSubtasks', user?.id, activeTaskId],
+    queryFn: async () => {
+      if (!activeTaskId) return [];
+      try {
+        const serverData = await api.getSubtasks({
+          title_ids: [activeTaskId],
+          limit: 1000,
+        });
+        if (serverData && Array.isArray(serverData.items)) {
+          await localDb.subtasks.bulkPut(serverData.items);
+          return serverData.items;
+        }
+      } catch {
+        // Fallback to Dexie
+      }
+      const local = await localDb.subtasks.where('title_id').equals(activeTaskId).toArray();
+      return local.filter((s) => !s.deleted_at && (!user?.id || s.user_id === user.id));
+    },
+    enabled: !!activeTaskId && !!user && !!api.getToken(),
+  });
+
+  // 4. Fetch Subtasks Query for Ledger / All Activity Log (with filters)
   const { data: subtasksData, isLoading } = useQuery<{ items: Subtask[]; total: number }>({
     queryKey: ['subtasks', user?.id, selectedTitleId, searchQuery, datePreset, customStartDate, customEndDate, statusFilter],
     queryFn: async () => {
@@ -125,7 +210,6 @@ export const App: React.FC = () => {
       }
 
       if (items.length === 0) {
-        // Local Dexie query & filter
         let localItems = await localDb.subtasks.toArray();
         localItems = localItems.filter((s) => !s.deleted_at && (!user?.id || s.user_id === user.id));
 
@@ -137,14 +221,12 @@ export const App: React.FC = () => {
           localItems = localItems.filter((s) => s.status === statusFilter);
         }
 
-        // Date preset filtering
         const { startDate, endDate } = datePreset !== 'all' && datePreset !== 'custom'
           ? getDateRangeFromPreset(datePreset)
           : { startDate: customStartDate, endDate: customEndDate };
         if (startDate) localItems = localItems.filter((s) => s.entry_date >= startDate);
         if (endDate) localItems = localItems.filter((s) => s.entry_date <= endDate);
 
-        // Search text filtering
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase().trim();
           localItems = localItems.filter(
@@ -219,6 +301,8 @@ export const App: React.FC = () => {
     },
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ['subtasks'] });
+      queryClient.invalidateQueries({ queryKey: ['allUserSubtasks'] });
+      queryClient.invalidateQueries({ queryKey: ['activeTaskSubtasks'] });
       queryClient.invalidateQueries({ queryKey: ['titles'] });
       if (saved && selectedTitleId && saved.title_id !== selectedTitleId) {
         setSelectedTitleId(null);
@@ -238,6 +322,8 @@ export const App: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subtasks'] });
+      queryClient.invalidateQueries({ queryKey: ['allUserSubtasks'] });
+      queryClient.invalidateQueries({ queryKey: ['activeTaskSubtasks'] });
       queryClient.invalidateQueries({ queryKey: ['titles'] });
     },
   });
@@ -280,8 +366,9 @@ export const App: React.FC = () => {
     },
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ['titles'] });
-      if (saved?.id) {
-        setSelectedTitleId(saved.id);
+      // When a new task is created, automatically open it in its separate page!
+      if (saved?.id && !editingTitle) {
+        setActiveTaskId(saved.id);
       }
     },
   });
@@ -295,6 +382,11 @@ export const App: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['titles'] });
       queryClient.invalidateQueries({ queryKey: ['subtasks'] });
+      queryClient.invalidateQueries({ queryKey: ['allUserSubtasks'] });
+      queryClient.invalidateQueries({ queryKey: ['activeTaskSubtasks'] });
+      if (activeTaskId) {
+        setActiveTaskId(null);
+      }
     },
   });
 
@@ -303,46 +395,180 @@ export const App: React.FC = () => {
     return <AuthGate />;
   }
 
+  // =========================================================================
+  // VIEW 1: DEDICATED SEPARATE PAGE FOR A TASK (activeTaskId is set)
+  // =========================================================================
+  if (activeTaskId) {
+    const activeTask = titles.find((t) => t.id === activeTaskId);
+
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        {activeTask ? (
+          <TaskDetailPage
+            task={activeTask}
+            subtasks={activeTaskSubtasks}
+            isLoading={isLoadingTaskSubtasks}
+            onBack={() => setActiveTaskId(null)}
+            onUpdateTitle={async (_titleId, input) => {
+              setEditingTitle(activeTask);
+              await saveTitleMutation.mutateAsync({
+                name: input.name,
+                color: input.color || activeTask.color || '#0d9488',
+                icon: activeTask.icon || 'folder',
+                sort_order: activeTask.sort_order || 0,
+              });
+              setEditingTitle(null);
+            }}
+            onDeleteTitle={async (titleId) => {
+              await deleteTitleMutation.mutateAsync(titleId);
+              setActiveTaskId(null);
+            }}
+            onAddSubtask={async (input) => {
+              await saveSubtaskMutation.mutateAsync(input);
+            }}
+            onEditSubtask={(subtask) => {
+              setEditingSubtask(subtask);
+              setIsAddSubtaskOpen(true);
+            }}
+            onDeleteSubtask={async (subtaskId) => {
+              await deleteSubtaskMutation.mutateAsync(subtaskId);
+            }}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center p-12 text-center min-h-[50vh]">
+            <h2 className="text-base font-bold text-foreground">Task not found</h2>
+            <p className="text-xs text-muted-foreground mt-1 mb-4">
+              This task may have been deleted or the link is invalid.
+            </p>
+            <Button onClick={() => setActiveTaskId(null)} size="sm">
+              Back to Tasks
+            </Button>
+          </div>
+        )}
+
+        {/* Edit Subtask Modal if opened from TaskDetailPage */}
+        <AddSubtaskModal
+          isOpen={isAddSubtaskOpen}
+          onClose={() => {
+            setIsAddSubtaskOpen(false);
+            setEditingSubtask(null);
+          }}
+          titles={titles}
+          selectedTitleId={activeTaskId}
+          onCreateTitlePrompt={() => {
+            setEditingTitle(null);
+            setIsAddTitleOpen(true);
+          }}
+          onSave={async (input) => {
+            await saveSubtaskMutation.mutateAsync(input);
+          }}
+          editingSubtask={editingSubtask}
+        />
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // VIEW 2: MAIN SCREEN (Tasks list or All Activity Ledger)
+  // =========================================================================
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground selection:bg-primary selection:text-primary-foreground pb-20 sm:pb-0">
       {/* Header */}
       <Header />
 
-      {/* Unified Filter Bar: [Title] [Date Range] [Search] [+ Log] */}
-      <FilterBar
-        titles={titles}
-        totalCount={totalCount}
-        filteredCount={subtasks.length}
-        onAddTitle={() => {
-          setEditingTitle(null);
-          setIsAddTitleOpen(true);
-        }}
-        onEditTitle={(title) => {
-          setEditingTitle(title);
-          setIsAddTitleOpen(true);
-        }}
-        onDeleteTitle={(id) => deleteTitleMutation.mutate(id)}
-        onOpenAddSubtask={() => {
-          setEditingSubtask(null);
-          setIsAddSubtaskOpen(true);
-        }}
-      />
+      {/* Top View Switcher Tabs: [Tasks] and [All Logs] */}
+      <div className="border-b border-border bg-card/60 px-4 sm:px-6 sticky top-13 z-20 backdrop-blur-md">
+        <div className="max-w-3xl mx-auto flex items-center gap-4 sm:gap-6">
+          <button
+            type="button"
+            onClick={() => setActiveTab('tasks')}
+            className={`py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
+              activeTab === 'tasks'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <span>Tasks</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted font-medium text-muted-foreground">
+              {titles.length}
+            </span>
+          </button>
 
-      {/* Main Single-Pane Log Feed */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('ledger')}
+            className={`py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
+              activeTab === 'ledger'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <span>All Logs</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted font-medium text-muted-foreground">
+              {totalCount}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Tab Content */}
       <main className="flex-1 overflow-y-auto bg-background">
-        <SubtaskList
-          subtasks={subtasks}
-          isLoading={isLoading}
-          onEditSubtask={(subtask) => {
-            setEditingSubtask(subtask);
-            setIsAddSubtaskOpen(true);
-          }}
-          onDeleteSubtask={(id) => deleteSubtaskMutation.mutate(id)}
-          onOpenAddModal={() => {
-            setEditingSubtask(null);
-            setIsAddSubtaskOpen(true);
-          }}
-        />
+        {activeTab === 'tasks' ? (
+          <TaskList
+            tasks={titles}
+            allSubtasks={allUserSubtasks}
+            isLoading={isAuthLoading}
+            onSelectTask={(taskId) => setActiveTaskId(taskId)}
+            onAddTask={() => {
+              setEditingTitle(null);
+              setIsAddTitleOpen(true);
+            }}
+            onEditTask={(title) => {
+              setEditingTitle(title);
+              setIsAddTitleOpen(true);
+            }}
+            onDeleteTask={(taskId) => deleteTitleMutation.mutate(taskId)}
+          />
+        ) : (
+          <>
+            {/* Unified Filter Bar: [Title] [Date Range] [Search] [+ Log] */}
+            <FilterBar
+              titles={titles}
+              totalCount={totalCount}
+              filteredCount={subtasks.length}
+              onAddTitle={() => {
+                setEditingTitle(null);
+                setIsAddTitleOpen(true);
+              }}
+              onEditTitle={(title) => {
+                setEditingTitle(title);
+                setIsAddTitleOpen(true);
+              }}
+              onDeleteTitle={(id) => deleteTitleMutation.mutate(id)}
+              onOpenAddSubtask={() => {
+                setEditingSubtask(null);
+                setIsAddSubtaskOpen(true);
+              }}
+              onOpenTaskPage={(taskId) => setActiveTaskId(taskId)}
+            />
+
+            {/* Main Single-Pane Log Feed */}
+            <SubtaskList
+              subtasks={subtasks}
+              isLoading={isLoading}
+              onEditSubtask={(subtask) => {
+                setEditingSubtask(subtask);
+                setIsAddSubtaskOpen(true);
+              }}
+              onDeleteSubtask={(id) => deleteSubtaskMutation.mutate(id)}
+              onOpenAddModal={() => {
+                setEditingSubtask(null);
+                setIsAddSubtaskOpen(true);
+              }}
+              onOpenTaskPage={(taskId) => setActiveTaskId(taskId)}
+            />
+          </>
+        )}
       </main>
 
       {/* Mobile Floating Action Button (+) */}
@@ -350,11 +576,16 @@ export const App: React.FC = () => {
         <button
           type="button"
           onClick={() => {
-            setEditingSubtask(null);
-            setIsAddSubtaskOpen(true);
+            if (activeTab === 'tasks') {
+              setEditingTitle(null);
+              setIsAddTitleOpen(true);
+            } else {
+              setEditingSubtask(null);
+              setIsAddSubtaskOpen(true);
+            }
           }}
           className="h-12 w-12 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg flex items-center justify-center transition-transform active:scale-95"
-          title="Log Past Work"
+          title={activeTab === 'tasks' ? 'Add Task' : 'Log Past Work'}
         >
           <PlusIcon className="h-6 w-6" />
         </button>

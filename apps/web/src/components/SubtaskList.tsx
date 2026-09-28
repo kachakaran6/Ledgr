@@ -20,6 +20,7 @@ interface SubtaskListProps {
   onEditSubtask: (subtask: Subtask) => void;
   onDeleteSubtask: (subtaskId: string) => void;
   onOpenAddModal: () => void;
+  onOpenTaskPage?: (taskId: string) => void;
 }
 
 export const SubtaskList: React.FC<SubtaskListProps> = ({
@@ -28,6 +29,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
   onEditSubtask,
   onDeleteSubtask,
   onOpenAddModal,
+  onOpenTaskPage,
 }) => {
   const {
     selectedTitleId,
@@ -215,12 +217,21 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                         {!selectedTitleId && subtask.title && (
                           <div className="mb-1">
                             <span
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                onOpenTaskPage ? 'cursor-pointer hover:opacity-80 active:scale-95' : ''
+                              } transition-all`}
                               style={{
                                 borderColor: `${subtask.title.color || '#0d9488'}40`,
                                 backgroundColor: `${subtask.title.color || '#0d9488'}15`,
                                 color: subtask.title.color || '#0d9488',
                               }}
+                              onClick={(e) => {
+                                if (onOpenTaskPage) {
+                                  e.stopPropagation();
+                                  onOpenTaskPage(subtask.title_id);
+                                }
+                              }}
+                              title={onOpenTaskPage ? `Open ${subtask.title.name} task details` : undefined}
                             >
                               <span
                                 className="h-1.5 w-1.5 rounded-full"
