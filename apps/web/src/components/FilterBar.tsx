@@ -15,6 +15,7 @@ import {
 import { useUI } from '../context/UIContext';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
+import { DatePicker } from './ui/date-picker';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -74,7 +75,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
   const [deletingTitleId, setDeletingTitleId] = React.useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const todayStr = new Date().toISOString().split('T')[0];
 
   // Global key listener for '/' to focus search
   useEffect(() => {
@@ -336,22 +336,20 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 p-2.5 rounded-lg bg-muted/40 border border-border text-xs animate-in fade-in">
             <div className="flex items-center gap-1.5">
               <span className="text-muted-foreground text-[11px] shrink-0">From</span>
-              <Input
-                type="date"
-                max={todayStr}
+              <DatePicker
                 value={customStartDate || ''}
-                onChange={(e) => setCustomStartDate(e.target.value || undefined)}
-                className="h-7 w-full sm:w-32 text-xs bg-background"
+                onChange={(val) => setCustomStartDate(val || undefined)}
+                placeholder="Start date"
+                className="h-7 w-full sm:w-36 text-xs bg-background"
               />
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-muted-foreground text-[11px] shrink-0">To</span>
-              <Input
-                type="date"
-                max={todayStr}
+              <DatePicker
                 value={customEndDate || ''}
-                onChange={(e) => setCustomEndDate(e.target.value || undefined)}
-                className="h-7 w-full sm:w-32 text-xs bg-background"
+                onChange={(val) => setCustomEndDate(val || undefined)}
+                placeholder="End date"
+                className="h-7 w-full sm:w-36 text-xs bg-background"
               />
             </div>
             <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline col-span-2">

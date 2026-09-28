@@ -10,6 +10,7 @@ import {
 } from './icons';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { DatePicker } from './ui/date-picker';
 import {
   SkeletonRowList,
   InlineError,
@@ -273,12 +274,10 @@ export const TaskDetailPage: React.FC<TaskDetailPageProps> = ({
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  <Input
-                    type="date"
-                    max={today}
+                  <DatePicker
                     value={entryDate}
-                    onChange={(e) => setEntryDate(e.target.value)}
-                    className="h-8 text-xs flex-1 bg-background font-mono tabular-nums"
+                    onChange={setEntryDate}
+                    className="h-8 text-xs flex-1 bg-background"
                     disabled={isAdding}
                   />
 

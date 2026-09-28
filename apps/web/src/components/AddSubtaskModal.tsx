@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  CalendarIcon,
   CheckCircle2Icon,
   AlertTriangleIcon,
   PlusIcon,
@@ -14,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
+import { DatePicker } from './ui/date-picker';
 import { InlineSpinner } from './LoadingFeedback';
 import type { Title, Subtask, CreateSubtaskInput, SubtaskStatus } from '@ledgr/shared';
 
@@ -212,17 +213,18 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
               )}
             </div>
             {titles.length > 0 ? (
-              <select
-                value={titleId}
-                onChange={(e) => setTitleId(e.target.value)}
-                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-heading font-medium"
-              >
-                {titles.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={titleId} onValueChange={setTitleId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a title..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {titles.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             ) : (
               <div className="flex items-center justify-between p-2.5 rounded-lg border border-dashed border-border bg-muted/30 text-xs">
                 <span className="text-muted-foreground">No categories yet.</span>
@@ -273,17 +275,11 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
               </div>
             </div>
 
-            <div className="relative">
-              <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <Input
-                type="date"
-                max={today}
-                value={entryDate}
-                onChange={(e) => setEntryDate(e.target.value)}
-                className="pl-9 h-10 text-sm w-full bg-background rounded-lg font-mono tabular-nums"
-                required
-              />
-            </div>
+            <DatePicker
+              value={entryDate}
+              onChange={setEntryDate}
+              placeholder="Pick a date"
+            />
           </div>
 
           {/* 3. Description Field */}
