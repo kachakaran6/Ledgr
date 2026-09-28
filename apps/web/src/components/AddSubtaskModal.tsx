@@ -87,7 +87,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => descInputRef.current?.focus(), 50);
+      setTimeout(() => descInputRef.current?.focus(), 60);
     }
   }, [isOpen]);
 
@@ -113,7 +113,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
     }
 
     if (!description.trim()) {
-      setError('Please enter a description.');
+      setError('Please enter what was completed.');
       return;
     }
 
@@ -147,7 +147,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="w-full max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-base font-bold">
+          <DialogTitle className="text-base sm:text-lg font-bold">
             {editingSubtask ? 'Edit Log Entry' : 'Log Past Work'}
           </DialogTitle>
           <DialogDescription className="text-xs">
@@ -155,7 +155,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-3.5 pt-1">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-1">
           {error && (
             <div className="p-2.5 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive flex items-center gap-2 font-medium">
               <AlertTriangleIcon className="h-4 w-4 shrink-0" />
@@ -164,7 +164,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
           )}
 
           {/* 1. Title / Category Selection */}
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-foreground">
                 Category / Title
@@ -173,7 +173,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
                 <button
                   type="button"
                   onClick={onCreateTitlePrompt}
-                  className="text-[11px] text-primary hover:underline font-medium inline-flex items-center gap-0.5"
+                  className="text-xs text-primary hover:underline font-medium inline-flex items-center gap-0.5"
                 >
                   <PlusIcon className="h-3 w-3" />
                   <span>New Title</span>
@@ -184,7 +184,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
               <select
                 value={titleId}
                 onChange={(e) => setTitleId(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs sm:text-sm shadow-xs transition-colors text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 {titles.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -193,7 +193,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
                 ))}
               </select>
             ) : (
-              <div className="flex items-center justify-between p-2 rounded-md border border-dashed border-border bg-muted/30 text-xs">
+              <div className="flex items-center justify-between p-2.5 rounded-lg border border-dashed border-border bg-muted/30 text-xs">
                 <span className="text-muted-foreground">No categories yet.</span>
                 {onCreateTitlePrompt && (
                   <Button
@@ -201,7 +201,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
                     variant="outline"
                     size="sm"
                     onClick={onCreateTitlePrompt}
-                    className="h-7 text-xs"
+                    className="h-8 text-xs font-medium"
                   >
                     Create Title
                   </Button>
@@ -211,7 +211,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
           </div>
 
           {/* 2. Description Field */}
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground">
               Description
             </label>
@@ -221,52 +221,58 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What did you work on? (e.g. Completed clutch overhaul, inspected wiring)"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs sm:text-sm shadow-xs transition-colors text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+              className="w-full rounded-lg border border-input bg-background p-3 text-sm shadow-xs transition-colors text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y min-h-[90px]"
               required
             />
           </div>
 
           {/* 3. Date Picker with Today & Yesterday Shortcuts */}
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-foreground">
-              Date (Past or Today)
-            </label>
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <Input
-                  type="date"
-                  max={today}
-                  value={entryDate}
-                  onChange={(e) => setEntryDate(e.target.value)}
-                  className="pl-9 h-9 text-xs sm:text-sm w-full"
-                  required
-                />
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-foreground">
+                Date (Past or Today)
+              </label>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setEntryDate(today)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                    entryDate === today
+                      ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
+                      : 'bg-muted text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEntryDate(yesterday)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                    entryDate === yesterday
+                      ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
+                      : 'bg-muted text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Yesterday
+                </button>
               </div>
+            </div>
 
-              <Button
-                type="button"
-                variant={entryDate === today ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setEntryDate(today)}
-                className="h-9 px-3 text-xs shrink-0"
-              >
-                Today
-              </Button>
-              <Button
-                type="button"
-                variant={entryDate === yesterday ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setEntryDate(yesterday)}
-                className="h-9 px-3 text-xs shrink-0"
-              >
-                Yesterday
-              </Button>
+            <div className="relative">
+              <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="date"
+                max={today}
+                value={entryDate}
+                onChange={(e) => setEntryDate(e.target.value)}
+                className="pl-9 h-10 text-sm w-full bg-background rounded-lg"
+                required
+              />
             </div>
           </div>
 
           {/* Optional Extra Fields Accordion */}
-          <div className="pt-1">
+          <div className="pt-0.5">
             <button
               type="button"
               onClick={() => setShowExtraFields(!showExtraFields)}
@@ -277,11 +283,11 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
               ) : (
                 <ChevronDownIcon className="h-3.5 w-3.5" />
               )}
-              <span>{showExtraFields ? 'Hide extra fields' : 'Add tags, cost, or time (optional)'}</span>
+              <span>{showExtraFields ? 'Hide optional details' : 'Add tags, cost, or time (optional)'}</span>
             </button>
 
             {showExtraFields && (
-              <div className="space-y-3 pt-2 pb-1 border-t border-border mt-1">
+              <div className="space-y-3 pt-2.5 pb-1 border-t border-border mt-1.5 animate-in fade-in">
                 {/* Tags */}
                 <div className="space-y-1">
                   <label className="text-xs text-muted-foreground">Tags</label>
@@ -297,14 +303,14 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
                         }
                       }}
                       placeholder="Add tag and press Enter"
-                      className="h-8 text-xs flex-1"
+                      className="h-9 text-xs flex-1"
                     />
                     <Button
                       type="button"
                       variant="secondary"
                       size="sm"
                       onClick={handleAddTag}
-                      className="h-8 px-2.5 text-xs shrink-0"
+                      className="h-9 px-3 text-xs shrink-0"
                     >
                       Add
                     </Button>
@@ -344,7 +350,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
                         value={cost}
                         onChange={(e) => setCost(e.target.value)}
                         placeholder="0.00"
-                        className="pl-7 h-8 text-xs"
+                        className="pl-7 h-9 text-xs"
                       />
                     </div>
                   </div>
@@ -359,7 +365,7 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
                         value={timeSpent}
                         onChange={(e) => setTimeSpent(e.target.value)}
                         placeholder="30"
-                        className="pl-7 h-8 text-xs"
+                        className="pl-7 h-9 text-xs"
                       />
                     </div>
                   </div>
@@ -369,24 +375,24 @@ export const AddSubtaskModal: React.FC<AddSubtaskModalProps> = ({
           </div>
 
           {/* Form Submit Actions */}
-          <div className="pt-3 flex items-center justify-end gap-2 border-t border-border">
+          <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-border">
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size="default"
               onClick={onClose}
-              className="text-xs"
+              className="h-10 px-4 text-xs font-medium"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               variant="default"
-              size="sm"
+              size="default"
               disabled={isSubmitting}
-              className="text-xs gap-1.5 font-medium"
+              className="h-10 px-4 text-xs gap-1.5 font-medium"
             >
-              <CheckCircle2Icon className="h-3.5 w-3.5" />
+              <CheckCircle2Icon className="h-4 w-4" />
               <span>{isSubmitting ? 'Saving...' : editingSubtask ? 'Save Changes' : 'Log Entry'}</span>
             </Button>
           </div>

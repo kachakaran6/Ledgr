@@ -92,172 +92,193 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
   return (
     <div className="w-full bg-card border-b border-border px-3 sm:px-6 py-2.5 transition-colors shadow-xs">
-      <div className="max-w-5xl mx-auto space-y-2.5">
-        {/* Unified Filter Controls Row: [Title] [Date Range] [Search] [+ Log] */}
+      <div className="max-w-5xl mx-auto space-y-2">
+        {/* Responsive Grid / Flex:
+            - Mobile: 2-column row for [Title] + [Date], followed by [Search]
+            - Desktop: 1 unified row for [Title] + [Date] + [Search] + [+ Log Work] */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          {/* 1. Title Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 justify-between gap-2 px-3 text-xs font-medium bg-background shrink-0 min-w-[130px]"
-              >
-                <div className="flex items-center gap-2 truncate">
-                  {activeTitle ? (
-                    <span
-                      className="h-2 w-2 rounded-full shrink-0"
-                      style={{ backgroundColor: activeTitle.color || 'hsl(var(--primary))' }}
-                    />
-                  ) : (
-                    <FolderIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  )}
-                  <span className="truncate">{activeTitle ? activeTitle.name : 'All Titles'}</span>
-                </div>
-                <ChevronDownIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-70" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="left" className="w-56">
-              <DropdownMenuItem
-                onClick={() => setSelectedTitleId(null)}
-                className="justify-between text-xs cursor-pointer"
-              >
-                <div className="flex items-center gap-2">
-                  <FolderIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>All Titles</span>
-                </div>
-                {selectedTitleId === null && <CheckIcon className="h-3.5 w-3.5 text-primary" />}
-              </DropdownMenuItem>
-
-              {titles.length > 0 && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider py-1">
-                    Workspaces ({titles.length})
-                  </DropdownMenuLabel>
-                  {titles.map((title) => (
-                    <div
-                      key={title.id}
-                      className="flex items-center justify-between px-2 py-1.5 text-xs rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors group cursor-pointer"
-                      onClick={() => setSelectedTitleId(title.id)}
-                    >
-                      <div className="flex items-center gap-2 truncate flex-1 min-w-0">
-                        <span
-                          className="h-2 w-2 rounded-full shrink-0"
-                          style={{ backgroundColor: title.color || 'hsl(var(--primary))' }}
-                        />
-                        <span className="truncate">{title.name}</span>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0 ml-1.5">
-                        <span className="text-[10px] text-muted-foreground mr-1">
-                          {title.subtask_count || 0}
-                        </span>
-                        {selectedTitleId === title.id && (
-                          <CheckIcon className="h-3.5 w-3.5 text-primary shrink-0" />
-                        )}
-                        {onEditTitle && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEditTitle(title);
-                            }}
-                            title="Edit Title"
-                            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                          >
-                            <EditIcon className="h-3 w-3" />
-                          </button>
-                        )}
-                        {onDeleteTitle && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm(`Delete title "${title.name}" and all its logs?`)) {
-                                onDeleteTitle(title.id);
-                              }
-                            }}
-                            title="Delete Title"
-                            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
-                          >
-                            <TrashIcon className="h-3 w-3" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={onAddTitle}
-                className="gap-2 text-xs text-primary font-medium cursor-pointer"
-              >
-                <PlusIcon className="h-3.5 w-3.5" />
-                <span>Create New Title...</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* 2. Date Range Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant={datePreset !== 'all' ? 'default' : 'outline'}
-                size="sm"
-                className={`h-9 justify-between gap-2 px-3 text-xs font-medium shrink-0 min-w-[120px] ${
-                  datePreset === 'all' ? 'bg-background' : ''
-                }`}
-              >
-                <div className="flex items-center gap-2 truncate">
-                  <CalendarIcon className="h-3.5 w-3.5 shrink-0 opacity-80" />
-                  <span className="truncate">{activeDateLabel}</span>
-                </div>
-                <ChevronDownIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="left" className="w-48">
-              <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider py-1">
-                Date Filter
-              </DropdownMenuLabel>
-              {PRESET_OPTIONS.map((p) => (
+          {/* Mobile 2-column container for dropdowns */}
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2 shrink-0">
+            {/* 1. Title Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto h-9 justify-between gap-1.5 px-2.5 sm:px-3 text-xs font-medium bg-background sm:min-w-[135px]"
+                >
+                  <div className="flex items-center gap-1.5 truncate">
+                    {activeTitle ? (
+                      <span
+                        className="h-2 w-2 rounded-full shrink-0"
+                        style={{ backgroundColor: activeTitle.color || 'hsl(var(--primary))' }}
+                      />
+                    ) : (
+                      <FolderIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    )}
+                    <span className="truncate">{activeTitle ? activeTitle.name : 'All Titles'}</span>
+                  </div>
+                  <ChevronDownIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-70" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="left" className="w-56">
                 <DropdownMenuItem
-                  key={p.id}
-                  onClick={() => setDatePreset(p.id)}
+                  onClick={() => setSelectedTitleId(null)}
                   className="justify-between text-xs cursor-pointer"
                 >
-                  <span>{p.label}</span>
-                  {datePreset === p.id && <CheckIcon className="h-3.5 w-3.5 text-primary" />}
+                  <div className="flex items-center gap-2">
+                    <FolderIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>All Titles</span>
+                  </div>
+                  {selectedTitleId === null && <CheckIcon className="h-3.5 w-3.5 text-primary" />}
                 </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
 
-          {/* 3. Search Box */}
-          <div className="relative flex-1">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-            <Input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search past logs... (/)"
-              className="pl-8 pr-8 bg-background h-9 text-xs rounded-md"
-            />
-            {searchQuery ? (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
-                title="Clear search"
-              >
-                <XIcon className="h-3.5 w-3.5" />
-              </button>
-            ) : null}
+                {titles.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider py-1">
+                      Workspaces ({titles.length})
+                    </DropdownMenuLabel>
+                    {titles.map((title) => (
+                      <div
+                        key={title.id}
+                        className="flex items-center justify-between px-2 py-1.5 text-xs rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors group cursor-pointer"
+                        onClick={() => setSelectedTitleId(title.id)}
+                      >
+                        <div className="flex items-center gap-2 truncate flex-1 min-w-0">
+                          <span
+                            className="h-2 w-2 rounded-full shrink-0"
+                            style={{ backgroundColor: title.color || 'hsl(var(--primary))' }}
+                          />
+                          <span className="truncate">{title.name}</span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0 ml-1.5">
+                          <span className="text-[10px] text-muted-foreground mr-1">
+                            {title.subtask_count || 0}
+                          </span>
+                          {selectedTitleId === title.id && (
+                            <CheckIcon className="h-3.5 w-3.5 text-primary shrink-0" />
+                          )}
+                          {onEditTitle && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditTitle(title);
+                              }}
+                              title="Edit Title"
+                              className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                            >
+                              <EditIcon className="h-3 w-3" />
+                            </button>
+                          )}
+                          {onDeleteTitle && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`Delete title "${title.name}" and all its logs?`)) {
+                                  onDeleteTitle(title.id);
+                                }
+                              }}
+                              title="Delete Title"
+                              className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
+                            >
+                              <TrashIcon className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={onAddTitle}
+                  className="gap-2 text-xs text-primary font-medium cursor-pointer"
+                >
+                  <PlusIcon className="h-3.5 w-3.5" />
+                  <span>Create New Title...</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* 2. Date Range Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant={datePreset !== 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  className={`w-full sm:w-auto h-9 justify-between gap-1.5 px-2.5 sm:px-3 text-xs font-medium sm:min-w-[125px] ${
+                    datePreset === 'all' ? 'bg-background' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 truncate">
+                    <CalendarIcon className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                    <span className="truncate">{activeDateLabel}</span>
+                  </div>
+                  <ChevronDownIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="left" className="w-48">
+                <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider py-1">
+                  Date Filter
+                </DropdownMenuLabel>
+                {PRESET_OPTIONS.map((p) => (
+                  <DropdownMenuItem
+                    key={p.id}
+                    onClick={() => setDatePreset(p.id)}
+                    className="justify-between text-xs cursor-pointer"
+                  >
+                    <span>{p.label}</span>
+                    {datePreset === p.id && <CheckIcon className="h-3.5 w-3.5 text-primary" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
-          {/* Entry count indicator */}
+          {/* 3. Search Box + Reset */}
+          <div className="flex items-center gap-1.5 flex-1">
+            <div className="relative flex-1">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+              <Input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search logs... (/)"
+                className="pl-8 pr-8 bg-background h-9 text-xs rounded-md w-full"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
+                  title="Clear search"
+                >
+                  <XIcon className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+            </div>
+
+            {/* Reset Filters Button (if active) */}
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllFilters}
+                title="Reset all filters"
+                className="h-9 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+              >
+                <RotateCcwIcon className="h-3.5 w-3.5 sm:mr-1" />
+                <span className="hidden sm:inline">Reset</span>
+              </Button>
+            )}
+          </div>
+
+          {/* Entry count indicator (desktop only) */}
           <span className="text-[11px] text-muted-foreground whitespace-nowrap hidden lg:inline px-1">
             {filteredCount} of {totalCount}
           </span>
@@ -272,48 +293,33 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             <PlusIcon className="h-4 w-4" />
             <span>Log Work</span>
           </Button>
-
-          {/* Reset Filters Button (if active) */}
-          {hasActiveFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearAllFilters}
-              title="Reset all filters"
-              className="h-9 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
-            >
-              <RotateCcwIcon className="h-3 w-3 sm:mr-1" />
-              <span className="hidden sm:inline">Reset</span>
-            </Button>
-          )}
         </div>
 
         {/* Custom Date Range Picker (shown only when custom is selected) */}
         {datePreset === 'custom' && (
-          <div className="flex flex-wrap items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border text-xs animate-in fade-in">
-            <span className="font-medium text-foreground text-xs">Date Range:</span>
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 p-2.5 rounded-lg bg-muted/40 border border-border text-xs animate-in fade-in">
             <div className="flex items-center gap-1.5">
-              <span className="text-muted-foreground text-[11px]">From</span>
+              <span className="text-muted-foreground text-[11px] shrink-0">From</span>
               <Input
                 type="date"
                 max={todayStr}
                 value={customStartDate || ''}
                 onChange={(e) => setCustomStartDate(e.target.value || undefined)}
-                className="h-7 w-32 text-xs bg-background"
+                className="h-7 w-full sm:w-32 text-xs bg-background"
               />
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-muted-foreground text-[11px]">To</span>
+              <span className="text-muted-foreground text-[11px] shrink-0">To</span>
               <Input
                 type="date"
                 max={todayStr}
                 value={customEndDate || ''}
                 onChange={(e) => setCustomEndDate(e.target.value || undefined)}
-                className="h-7 w-32 text-xs bg-background"
+                className="h-7 w-full sm:w-32 text-xs bg-background"
               />
             </div>
-            <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline">
-              (Future dates disabled)
+            <span className="text-[10px] text-muted-foreground ml-auto hidden sm:inline col-span-2">
+              (Past dates only)
             </span>
           </div>
         )}

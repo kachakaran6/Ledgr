@@ -11,7 +11,6 @@ import {
 import { useUI } from '../context/UIContext';
 import { formatDisplayDate } from '@ledgr/shared';
 import { Button } from './ui/button';
-import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
 import type { Subtask } from '@ledgr/shared';
 
@@ -43,11 +42,11 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
 
   if (isLoading) {
     return (
-      <div className="p-4 sm:p-6 space-y-3 max-w-5xl mx-auto">
+      <div className="p-3 sm:p-6 space-y-3 max-w-5xl mx-auto">
         {[1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className="p-4 rounded-lg border border-border bg-card space-y-2.5"
+            className="p-3.5 rounded-xl border border-border bg-card space-y-2.5"
           >
             <Skeleton className="h-4 w-1/4" />
             <Skeleton className="h-5 w-3/4" />
@@ -68,7 +67,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
         </h3>
         <p className="mt-1 text-xs text-muted-foreground">
           {hasActiveFilters
-            ? 'Try changing your search term or adjusting the date range filter.'
+            ? 'Try changing your search term or resetting the date filter.'
             : 'Record what you worked on today or on past dates to build your log history.'}
         </p>
         <div className="mt-5">
@@ -86,10 +85,10 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
               variant="default"
               size="sm"
               onClick={onOpenAddModal}
-              className="gap-1.5 font-medium text-xs"
+              className="gap-1.5 font-medium text-xs h-9 px-4"
             >
               <PlusIcon className="h-3.5 w-3.5" />
-              <span>Log First Entry (Press N)</span>
+              <span>Log First Entry</span>
             </Button>
           )}
         </div>
@@ -125,7 +124,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
     <div className="p-3 sm:p-6 space-y-5 max-w-5xl mx-auto">
       {/* Selection Mode Bulk Toolbar */}
       {isSelectionMode && (
-        <div className="sticky top-0 z-20 flex items-center justify-between p-2 rounded-lg bg-primary/10 border border-primary/20 text-xs font-medium text-foreground backdrop-blur-md shadow-xs mb-3">
+        <div className="sticky top-0 z-20 flex items-center justify-between p-2 rounded-xl bg-primary/10 border border-primary/20 text-xs font-medium text-foreground backdrop-blur-md shadow-xs mb-3">
           <div className="flex items-center gap-2">
             <Button
               variant="default"
@@ -160,7 +159,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
           {/* Clean Date Header */}
           <div className="sticky top-0 z-10 py-1.5 px-1 flex items-center justify-between bg-background/95 backdrop-blur-sm border-b border-border/60">
             <div className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              <span className="h-2 w-2 rounded-full bg-primary" />
               <h3 className="text-xs font-bold tracking-tight text-foreground uppercase">
                 {group.displayDate}
               </h3>
@@ -174,7 +173,7 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
           </div>
 
           {/* Subtask Rows */}
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {group.items.map((subtask) => {
               const isSelected = selectedSubtaskIds.has(subtask.id);
 
@@ -186,15 +185,15 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                       toggleSelectSubtask(subtask.id);
                     }
                   }}
-                  className={`group relative rounded-lg border p-3 transition-all ${
+                  className={`group relative rounded-xl border p-3.5 sm:p-4 transition-all shadow-xs ${
                     isSelected
-                      ? 'bg-primary/5 border-primary shadow-xs'
+                      ? 'bg-primary/5 border-primary ring-1 ring-primary'
                       : 'bg-card border-border hover:border-border/90'
                   } ${isSelectionMode ? 'cursor-pointer' : ''}`}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                      {/* Selection Checkbox */}
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      {/* Selection Checkbox or Done Bullet */}
                       {isSelectionMode ? (
                         <div className="pt-0.5 shrink-0">
                           <input
@@ -205,25 +204,30 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                           />
                         </div>
                       ) : (
-                        <div className="pt-0.5 shrink-0 text-muted-foreground">
-                          <CheckCircle2Icon className="h-3.5 w-3.5 text-primary/70" />
+                        <div className="pt-0.5 shrink-0 text-primary">
+                          <CheckCircle2Icon className="h-4 w-4 text-primary/80" />
                         </div>
                       )}
 
                       {/* Main Task Content */}
                       <div className="min-w-0 flex-1 space-y-1">
-                        {/* Title pill shown when viewing all titles or when title exists */}
+                        {/* Title category badge when viewing All Titles */}
                         {!selectedTitleId && subtask.title && (
-                          <div className="inline-block mr-2">
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] font-medium py-0 px-1.5 border-border text-foreground"
+                          <div className="mb-1">
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"
                               style={{
-                                borderColor: subtask.title.color || 'hsl(var(--primary))',
+                                borderColor: `${subtask.title.color || '#0d9488'}40`,
+                                backgroundColor: `${subtask.title.color || '#0d9488'}15`,
+                                color: subtask.title.color || '#0d9488',
                               }}
                             >
+                              <span
+                                className="h-1.5 w-1.5 rounded-full"
+                                style={{ backgroundColor: subtask.title.color || '#0d9488' }}
+                              />
                               {subtask.title.name}
-                            </Badge>
+                            </span>
                           </div>
                         )}
 
@@ -236,22 +240,20 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
 
                     {/* Action Controls */}
                     {!isSelectionMode && (
-                      <div className="flex items-center gap-0.5 opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             onEditSubtask(subtask);
                           }}
                           title="Edit Entry"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         >
                           <EditIcon className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        </button>
+                        <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (confirm('Delete this entry?')) {
@@ -259,10 +261,10 @@ export const SubtaskList: React.FC<SubtaskListProps> = ({
                             }
                           }}
                           title="Delete Entry"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                         >
                           <TrashIcon className="h-3.5 w-3.5" />
-                        </Button>
+                        </button>
                       </div>
                     )}
                   </div>
