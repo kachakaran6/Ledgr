@@ -202,6 +202,8 @@ export class SupabaseDatabase implements IDatabase {
 
     const items = (data || []).map((s: any) => ({
       ...s,
+      cost: s.cost !== null && s.cost !== undefined && s.cost !== '' ? parseFloat(s.cost) : null,
+      time_spent_minutes: s.time_spent_minutes !== null && s.time_spent_minutes !== undefined && s.time_spent_minutes !== '' ? parseInt(s.time_spent_minutes, 10) : null,
       title: s.titles
     }));
 
@@ -218,7 +220,12 @@ export class SupabaseDatabase implements IDatabase {
       .single();
 
     if (error || !data) return null;
-    return { ...data, title: data.titles } as Subtask;
+    return {
+      ...data,
+      cost: data.cost !== null && data.cost !== undefined && data.cost !== '' ? parseFloat(data.cost) : null,
+      time_spent_minutes: data.time_spent_minutes !== null && data.time_spent_minutes !== undefined && data.time_spent_minutes !== '' ? parseInt(data.time_spent_minutes, 10) : null,
+      title: data.titles
+    } as Subtask;
   }
 
   async createSubtask(userId: string, input: CreateSubtaskInput): Promise<Subtask> {

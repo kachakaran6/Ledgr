@@ -10,42 +10,112 @@
  *  - Descriptive filenames, date range–aware.
  */
 
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import ExcelJS from 'exceljs';
 import { getDatabase } from '../db/index.js';
 import type { ExportRequestInput, Subtask } from '@ledgr/shared';
 
-// ─── Font paths (resolved relative to this file at bundle time) ─────────────
+// ─── Font paths (resolved dynamically with bulletproof fallbacks) ───────────
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
 
-// Walk up from dist/services/ or src/services/ to apps/api/
-function resolveRoot(...parts: string[]) {
-  return path.resolve(__dirname, '..', '..', ...parts);
+function findExistingPath(candidates: (string | undefined)[]): string | null {
+  for (const c of candidates) {
+    if (!c) continue;
+    try {
+      if (fs.existsSync(c)) return c;
+    } catch {
+      // ignore access error
+    }
+  }
+  return null;
 }
 
-const FONTS = {
-  DejaVu: {
-    normal:      resolveRoot('node_modules', 'dejavu-fonts-ttf', 'ttf', 'DejaVuSans.ttf'),
-    bold:        resolveRoot('node_modules', 'dejavu-fonts-ttf', 'ttf', 'DejaVuSans-Bold.ttf'),
-    italics:     resolveRoot('node_modules', 'dejavu-fonts-ttf', 'ttf', 'DejaVuSans-Oblique.ttf'),
-    bolditalics: resolveRoot('node_modules', 'dejavu-fonts-ttf', 'ttf', 'DejaVuSans-BoldOblique.ttf'),
-  },
-  // Devanagari (Hindi) + Gujarati fonts shipped alongside the service
-  Devanagari: {
-    normal:      resolveRoot('fonts', 'NotoSansDevanagari.ttf'),
-    bold:        resolveRoot('fonts', 'NotoSansDevanagari.ttf'),
-    italics:     resolveRoot('fonts', 'NotoSansDevanagari.ttf'),
-    bolditalics: resolveRoot('fonts', 'NotoSansDevanagari.ttf'),
-  },
-  Gujarati: {
-    normal:      resolveRoot('fonts', 'NotoSansGujarati.ttf'),
-    bold:        resolveRoot('fonts', 'NotoSansGujarati.ttf'),
-    italics:     resolveRoot('fonts', 'NotoSansGujarati.ttf'),
-    bolditalics: resolveRoot('fonts', 'NotoSansGujarati.ttf'),
-  },
-};
+function resolveDejaVuFont(file: string): string | null {
+  try {
+    return require.resolve(`dejavu-fonts-ttf/ttf/${file}`);
+  } catch {
+    // ignore
+  }
+  return findExistingPath([
+    path.resolve(process.cwd(), 'node_modules', 'dejavu-fonts-ttf', 'ttf', file),
+    path.resolve(process.cwd(), 'apps', 'api', 'node_modules', 'dejavu-fonts-ttf', 'ttf', file),
+    path.resolve(__dirname, 'node_modules', 'dejavu-fonts-ttf', 'ttf', file),
+    path.resolve(__dirname, '..', 'node_modules', 'dejavu-fonts-ttf', 'ttf', file),
+    path.resolve(__dirname, '..', '..', 'node_modules', 'dejavu-fonts-ttf', 'ttf', file),
+    path.resolve(__dirname, '..', '..', '..', 'node_modules', 'dejavu-fonts-ttf', 'ttf', file),
+  ]);
+}
+
+function resolveLocalFont(file: string): string | null {
+  return findExistingPath([
+    path.resolve(process.cwd(), 'fonts', file),
+    path.resolve(process.cwd(), 'apps', 'api', 'fonts', file),
+    path.resolve(__dirname, 'fonts', file),
+    path.resolve(__dirname, '..', 'fonts', file),
+    path.resolve(__dirname, '..', '..', 'fonts', file),
+    path.resolve(__dirname, '..', '..', '..', 'fonts', file),
+    path.resolve(__dirname, '..', '..', '..', 'apps', 'api', 'fonts', file),
+  ]);
+}
+
+function getPdfFonts() {
+  const dejavuNormal = resolveDejaVuFont('DejaVuSans.ttf');
+  const dejavuBold = resolveDejaVuFont('DejaVuSans-Bold.ttf') || dejavuNormal;
+  const dejavuItalics = resolveDejaVuFont('DejaVuSans-Oblique.ttf') || dejavuNormal;
+  const dejavuBoldItalics = resolveDejaVuFont('DejaVuSans-BoldOblique.ttf') || dejavuNormal;
+
+  const notoDevanagari = resolveLocalFont('NotoSansDevanagari.ttf');
+  const notoGujarati = resolveLocalFont('NotoSansGujarati.ttf');
+
+  const fonts: Record<string, any> = {
+    // Built-in standard PDF fallback (always available in pdfmake, no external files needed)
+    Helvetica: {
+      normal: 'Helvetica',
+      bold: 'Helvetica-Bold',
+      italics: 'Helvetica-Oblique',
+      bolditalics: 'Helvetica-BoldOblique',
+    },
+  };
+
+  let defaultFont = 'Helvetica';
+
+  if (dejavuNormal) {
+    fonts.DejaVu = {
+      normal: dejavuNormal,
+      bold: dejavuBold || dejavuNormal,
+      italics: dejavuItalics || dejavuNormal,
+      bolditalics: dejavuBoldItalics || dejavuNormal,
+    };
+    defaultFont = 'DejaVu';
+  }
+
+  const hasDevanagari = Boolean(notoDevanagari);
+  if (notoDevanagari) {
+    fonts.Devanagari = {
+      normal: notoDevanagari,
+      bold: notoDevanagari,
+      italics: notoDevanagari,
+      bolditalics: notoDevanagari,
+    };
+  }
+
+  const hasGujarati = Boolean(notoGujarati);
+  if (notoGujarati) {
+    fonts.Gujarati = {
+      normal: notoGujarati,
+      bold: notoGujarati,
+      italics: notoGujarati,
+      bolditalics: notoGujarati,
+    };
+  }
+
+  return { fonts, defaultFont, hasDevanagari, hasGujarati };
+}
 
 // Brand colors
 const COLOR = {
@@ -59,17 +129,102 @@ const COLOR = {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
+ * Format a cost value safely into "$XX.XX" (or empty string if not set).
+ * Defensively handles numbers, strings (e.g. from Postgres NUMERIC), null, or undefined.
+ */
+function formatCost(cost: unknown): string {
+  if (cost == null || cost === '') return '';
+  const num = typeof cost === 'number' ? cost : parseFloat(String(cost));
+  return isNaN(num) ? '' : `$${num.toFixed(2)}`;
+}
+
+/**
+ * Format a raw cost without currency symbol for CSV.
+ */
+function formatCostRaw(cost: unknown): string {
+  if (cost == null || cost === '') return '';
+  const num = typeof cost === 'number' ? cost : parseFloat(String(cost));
+  return isNaN(num) ? '' : num.toFixed(2);
+}
+
+/**
+ * Parse cost safely to number or null.
+ */
+function parseCostNumber(cost: unknown): number | null {
+  if (cost == null || cost === '') return null;
+  const num = typeof cost === 'number' ? cost : parseFloat(String(cost));
+  return isNaN(num) ? null : num;
+}
+
+/**
+ * Format time spent in minutes safely into "XXm" (or empty string if not set).
+ */
+function formatTime(time: unknown): string {
+  if (time == null || time === '') return '';
+  const num = typeof time === 'number' ? time : parseInt(String(time), 10);
+  return isNaN(num) ? '' : `${num}m`;
+}
+
+/**
+ * Parse time spent safely to number or null.
+ */
+function parseTimeNumber(time: unknown): number | null {
+  if (time == null || time === '') return null;
+  const num = typeof time === 'number' ? time : parseInt(String(time), 10);
+  return isNaN(num) ? null : num;
+}
+
+/**
+ * Format tags safely into a joined string.
+ * Handles arrays, comma-separated strings, or Postgres array string syntax ("{tag1,tag2}").
+ */
+function formatTags(tags: unknown, separator = ', '): string {
+  if (!tags) return '';
+  if (Array.isArray(tags)) return tags.filter(Boolean).join(separator);
+  if (typeof tags === 'string') {
+    const cleaned = tags.replace(/^\{|\}$/g, '').replace(/"/g, '').trim();
+    if (!cleaned) return '';
+    if (separator !== ', ' && cleaned.includes(',')) {
+      return cleaned.split(',').map(s => s.trim()).filter(Boolean).join(separator);
+    }
+    return cleaned;
+  }
+  return String(tags);
+}
+
+/**
  * Format a YYYY-MM-DD string to a display string like "28 Sep 2026".
  */
-function fmtDate(dateStr: string): string {
+function fmtDate(dateStr: unknown): string {
+  if (!dateStr) return '';
+  const str = typeof dateStr === 'string'
+    ? dateStr
+    : dateStr instanceof Date
+      ? dateStr.toISOString().split('T')[0]!
+      : String(dateStr);
   try {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    return new Date(y!, m! - 1, d!).toLocaleDateString('en-GB', {
+    const clean = str.split('T')[0]!;
+    const [y, m, d] = clean.split('-').map(Number);
+    if (!y || !m || !d) return clean;
+    return new Date(y, m - 1, d).toLocaleDateString('en-GB', {
       day: 'numeric', month: 'short', year: 'numeric',
     });
   } catch {
-    return dateStr;
+    return String(dateStr);
   }
+}
+
+/**
+ * Safely parse entry_date into a JS Date object.
+ */
+function parseEntryDate(dateStr: unknown): Date {
+  if (dateStr instanceof Date) return dateStr;
+  const str = typeof dateStr === 'string' ? dateStr.split('T')[0]! : '';
+  const [y, m, d] = str.split('-').map(Number);
+  if (y && m && d) {
+    return new Date(y, m - 1, d);
+  }
+  return new Date();
 }
 
 /**
@@ -78,16 +233,28 @@ function fmtDate(dateStr: string): string {
  */
 function buildDateRange(subtasks: Subtask[]): string {
   if (subtasks.length === 0) return '';
-  const dates = subtasks.map(s => s.entry_date).sort();
+  const dates = subtasks
+    .map(s => typeof s.entry_date === 'string' ? s.entry_date.split('T')[0]! : new Date(s.entry_date).toISOString().split('T')[0]!)
+    .filter(Boolean)
+    .sort();
+  if (dates.length === 0) return '';
   const earliest = dates[0]!;
   const latest = dates[dates.length - 1]!;
   if (earliest === latest) return fmtDate(earliest);
   const fmt = (d: string) => {
-    const [y, m, day] = d.split('-').map(Number);
-    return new Date(y!, m! - 1, day!).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    try {
+      const [y, m, day] = d.split('-').map(Number);
+      return new Date(y!, m! - 1, day!).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    } catch {
+      return d;
+    }
   };
-  const [ly, lm, ld] = latest.split('-').map(Number);
-  return `${fmt(earliest)} – ${fmt(latest)}, ${new Date(ly!, lm! - 1, ld!).getFullYear()}`;
+  try {
+    const [ly, lm, ld] = latest.split('-').map(Number);
+    return `${fmt(earliest)} – ${fmt(latest)}, ${new Date(ly!, lm! - 1, ld!).getFullYear()}`;
+  } catch {
+    return `${fmt(earliest)} – ${fmt(latest)}`;
+  }
 }
 
 /**
@@ -104,12 +271,19 @@ function safeSegment(s: string, maxLen = 30): string {
 function buildFilename(subtasks: Subtask[], titleNames: string[]): string {
   const today = new Date().toISOString().split('T')[0]!.replace(/-/g, '');
   const titlePart = titleNames.length === 1 ? safeSegment(titleNames[0]!) : 'all';
-  const dates = subtasks.map(s => s.entry_date).sort();
+  const dates = subtasks
+    .map(s => typeof s.entry_date === 'string' ? s.entry_date.split('T')[0]! : new Date(s.entry_date).toISOString().split('T')[0]!)
+    .filter(Boolean)
+    .sort();
   let datePart = '';
   if (dates.length > 0) {
     const fmt = (d: string) => {
-      const [y, m, day] = d.split('-').map(Number);
-      return new Date(y!, m! - 1, day!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase().replace(/\s/g, '');
+      try {
+        const [y, m, day] = d.split('-').map(Number);
+        return new Date(y!, m! - 1, day!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toLowerCase().replace(/\s/g, '');
+      } catch {
+        return safeSegment(d, 10);
+      }
     };
     const earliest = dates[0]!;
     const latest = dates[dates.length - 1]!;
@@ -124,24 +298,30 @@ function buildFilename(subtasks: Subtask[], titleNames: string[]): string {
  */
 function detectColumns(subtasks: Subtask[]) {
   return {
-    hasCost: subtasks.some(s => s.cost != null),
-    hasTime: subtasks.some(s => s.time_spent_minutes != null),
-    hasTags: subtasks.some(s => s.tags?.length > 0),
+    hasCost: subtasks.some(s => s.cost != null && (s.cost as any) !== '' && !isNaN(Number(s.cost))),
+    hasTime: subtasks.some(s => s.time_spent_minutes != null && (s.time_spent_minutes as any) !== '' && !isNaN(Number(s.time_spent_minutes))),
+    hasTags: subtasks.some(s => Array.isArray(s.tags) ? s.tags.length > 0 : Boolean(s.tags && (s.tags as any) !== '{}')),
   };
 }
 
 /**
  * Tokenize a string into pdfmake inline text segments for multi-script support.
- * Latin/symbols → DejaVu (supports full ASCII + common Unicode).
- * Devanagari → Devanagari font.
- * Gujarati → Gujarati font.
+ * Latin/symbols → Default font (DejaVu or Helvetica fallback).
+ * Devanagari → Devanagari font (if available).
+ * Gujarati → Gujarati font (if available).
  */
-function richText(text: string, baseStyle?: Record<string, unknown>): unknown {
+function richText(
+  text: string,
+  baseStyle?: Record<string, unknown>,
+  options?: { hasDevanagari?: boolean; hasGujarati?: boolean }
+): unknown {
   if (!text) return { text: '', ...baseStyle };
 
   const devanagariRe = /[\u0900-\u097F]/;
   const gujaratiRe   = /[\u0A80-\u0AFF]/;
-  const needsSplit   = devanagariRe.test(text) || gujaratiRe.test(text);
+  const hasDev = Boolean(options?.hasDevanagari) && devanagariRe.test(text);
+  const hasGuj = Boolean(options?.hasGujarati) && gujaratiRe.test(text);
+  const needsSplit = hasDev || hasGuj;
   if (!needsSplit) return { text, ...baseStyle };
 
   const tokenRe = /([\u0900-\u097F]+|[\u0A80-\u0AFF]+|[^\u0900-\u097F\u0A80-\u0AFF]+)/g;
@@ -149,9 +329,9 @@ function richText(text: string, baseStyle?: Record<string, unknown>): unknown {
   let m: RegExpExecArray | null;
   while ((m = tokenRe.exec(text)) !== null) {
     const chunk = m[0]!;
-    if (devanagariRe.test(chunk)) {
+    if (options?.hasDevanagari && devanagariRe.test(chunk)) {
       parts.push({ text: chunk, font: 'Devanagari', ...baseStyle });
-    } else if (gujaratiRe.test(chunk)) {
+    } else if (options?.hasGujarati && gujaratiRe.test(chunk)) {
       parts.push({ text: chunk, font: 'Gujarati', ...baseStyle });
     } else {
       parts.push({ text: chunk, ...baseStyle });
@@ -178,8 +358,13 @@ export class ExportService {
    */
   static async getExportData(userId: string, input: ExportRequestInput): Promise<ExportData> {
     const db = getDatabase();
-    const user = await db.getUserById(userId);
-    const userName = user?.name || user?.email || 'Technician';
+    let userName = 'Technician';
+    try {
+      const user = await db.getUserById(userId);
+      userName = user?.name || user?.email || 'Technician';
+    } catch {
+      // Non-fatal
+    }
     const generatedAt = new Date().toISOString();
 
     let subtasks: Subtask[] = [];
@@ -187,9 +372,12 @@ export class ExportService {
     if (input.subtask_ids && input.subtask_ids.length > 0) {
       // Explicit ID list — re-verify ownership per entry
       for (const id of input.subtask_ids) {
-        const s = await db.getSubtaskById(userId, id);
-        if (s) subtasks.push(s);
-        // silently skip IDs that don't belong to this user (they just won't appear)
+        try {
+          const s = await db.getSubtaskById(userId, id);
+          if (s) subtasks.push(s);
+        } catch {
+          // silently skip IDs that fail or don't belong to this user
+        }
       }
     } else {
       // Filter-based fetch
@@ -202,7 +390,7 @@ export class ExportService {
         ...(input.title_ids && input.title_ids.length > 0 ? { title_ids: input.title_ids } : {}),
       };
       const res = await db.getSubtasks(userId, filter);
-      subtasks = res.items;
+      subtasks = res.items || [];
     }
 
     if (subtasks.length === 0) {
@@ -211,20 +399,29 @@ export class ExportService {
 
     // Stable sort by entry_date desc, then created_at desc
     subtasks.sort((a, b) => {
-      const dateCmp = b.entry_date.localeCompare(a.entry_date);
+      const aDate = typeof a.entry_date === 'string' ? a.entry_date : '';
+      const bDate = typeof b.entry_date === 'string' ? b.entry_date : '';
+      const dateCmp = bDate.localeCompare(aDate);
       if (dateCmp !== 0) return dateCmp;
-      return b.created_at.localeCompare(a.created_at);
+      const aCreated = typeof a.created_at === 'string' ? a.created_at : '';
+      const bCreated = typeof b.created_at === 'string' ? b.created_at : '';
+      return bCreated.localeCompare(aCreated);
     });
 
     const titleNames = [...new Set(subtasks.map(s => s.title?.name || 'General'))];
     const filename = buildFilename(subtasks, titleNames);
     const dateRange = buildDateRange(subtasks);
 
-    await db.createAuditLog(userId, 'EXPORT_DATA', 'export', null, {
-      format: input.format,
-      rowCount: subtasks.length,
-      filename,
-    });
+    try {
+      await db.createAuditLog(userId, 'EXPORT_DATA', 'export', null, {
+        format: input.format,
+        rowCount: subtasks.length,
+        filename,
+      });
+    } catch (auditErr) {
+      // Non-fatal: do not block export if audit logging fails
+      console.warn('Failed to record export audit log:', auditErr);
+    }
 
     return { subtasks, userName, generatedAt, filename, dateRange, titleNames };
   }
@@ -239,9 +436,12 @@ export class ExportService {
     const pdfmakeModule = await import('pdfmake');
     const pdfmake = (pdfmakeModule as any).default || pdfmakeModule;
 
+    const { fonts, defaultFont, hasDevanagari, hasGujarati } = getPdfFonts();
+    const fontOpts = { hasDevanagari, hasGujarati };
+
     pdfmake.setUrlAccessPolicy(() => false);   // no external URLs in server context
     pdfmake.setLocalAccessPolicy(() => true);  // allow local font files
-    pdfmake.fonts = FONTS;
+    pdfmake.fonts = fonts;
 
     // Group by title, preserving sorted order
     const groups = new Map<string, Subtask[]>();
@@ -262,13 +462,6 @@ export class ExportService {
     if (hasCost) { colHeaders.push({ text: 'Cost', bold: true, fillColor: COLOR.INK, color: '#FFFFFF', fontSize: 8 }); colWidths.push('auto'); }
     if (hasTime) { colHeaders.push({ text: 'Time', bold: true, fillColor: COLOR.INK, color: '#FFFFFF', fontSize: 8 }); colWidths.push('auto'); }
 
-    const statusLabel = (s: string) => {
-      if (s === 'done') return 'Done';
-      if (s === 'in_progress') return 'In Progress';
-      if (s === 'cancelled') return 'Cancelled';
-      return s;
-    };
-
     // Build body content
     const bodyContent: unknown[] = [];
 
@@ -278,12 +471,12 @@ export class ExportService {
       for (const t of tasks) {
         const row: unknown[] = [
           { text: fmtDate(t.entry_date), fontSize: 8, color: COLOR.INK, noWrap: true },
-          richText(t.description, { fontSize: 8, color: COLOR.INK }),
+          richText(t.description || '', { fontSize: 8, color: COLOR.INK }, fontOpts),
           { text: statusLabel(t.status), fontSize: 8, color: COLOR.MUTED, noWrap: true },
         ];
-        if (hasTags)  row.push({ text: t.tags?.join(', ') || '', fontSize: 7.5, color: COLOR.MUTED });
-        if (hasCost)  row.push({ text: t.cost != null ? `$${t.cost.toFixed(2)}` : '', fontSize: 8, color: COLOR.INK, noWrap: true });
-        if (hasTime)  row.push({ text: t.time_spent_minutes != null ? `${t.time_spent_minutes}m` : '', fontSize: 8, color: COLOR.MUTED, noWrap: true });
+        if (hasTags)  row.push({ text: formatTags(t.tags), fontSize: 7.5, color: COLOR.MUTED });
+        if (hasCost)  row.push({ text: formatCost(t.cost), fontSize: 8, color: COLOR.INK, noWrap: true });
+        if (hasTime)  row.push({ text: formatTime(t.time_spent_minutes), fontSize: 8, color: COLOR.MUTED, noWrap: true });
         tableBody.push(row);
       }
 
@@ -295,7 +488,7 @@ export class ExportService {
             columns: [
               {
                 text: [
-                  { text: titleName, bold: true, fontSize: 11, color: COLOR.ACCENT },
+                  richText(titleName, { bold: true, fontSize: 11, color: COLOR.ACCENT }, fontOpts) as any,
                   { text: `  (${tasks.length} ${tasks.length === 1 ? 'entry' : 'entries'})`, fontSize: 9, color: COLOR.MUTED },
                 ],
               },
@@ -329,7 +522,7 @@ export class ExportService {
       pageSize: 'A4' as const,
       pageOrientation: 'portrait' as const,
       pageMargins: [36, 50, 36, 50] as [number, number, number, number],
-      defaultStyle: { font: 'DejaVu', fontSize: 9, color: COLOR.INK },
+      defaultStyle: { font: defaultFont, fontSize: 9, color: COLOR.INK },
 
       header: (_currentPage: number, _pageCount: number, _pageSize: { width: number; height: number }) => ({
         margin: [36, 16, 36, 0],
@@ -343,7 +536,7 @@ export class ExportService {
           {
             stack: [
               { text: dateRange, fontSize: 9, color: COLOR.MUTED, alignment: 'right' },
-              { text: `Exported for: ${userName}`, fontSize: 8, color: COLOR.MUTED, alignment: 'right' },
+              richText(`Exported for: ${userName}`, { fontSize: 8, color: COLOR.MUTED, alignment: 'right' }, fontOpts) as any,
             ],
           },
         ],
@@ -448,25 +641,26 @@ export class ExportService {
 
     // Data rows
     for (const t of subtasks) {
-      // Parse entry_date as a real JS Date (date-only, midnight local time)
-      const [y, m, d] = t.entry_date.split('-').map(Number);
-      const entryDate = new Date(y!, m! - 1, d!);
+      const entryDate = parseEntryDate(t.entry_date);
+      const numCost = parseCostNumber(t.cost);
+      const numTime = parseTimeNumber(t.time_spent_minutes);
+      const tagsStr = formatTags(t.tags);
 
       const row = worksheet.addRow({
         title:       t.title?.name || 'General',
-        description: t.description,
+        description: t.description || '',
         date:        entryDate,                    // native Date type → Excel date cell
         status:      statusLabel(t.status),
-        tags:        t.tags?.join(', ') || null,   // null → empty cell (not "")
-        cost:        t.cost ?? null,               // null → empty cell
-        time_spent:  t.time_spent_minutes ?? null, // null → empty cell
+        tags:        tagsStr || null,              // null → empty cell (not "")
+        cost:        numCost,                      // null → empty cell
+        time_spent:  numTime,                      // null → empty cell
       });
 
       // Format date column as date
       row.getCell('date').numFmt = 'DD MMM YYYY';
 
       // Format cost as currency
-      if (t.cost != null) {
+      if (numCost != null) {
         row.getCell('cost').numFmt = '$#,##0.00';
       }
 
@@ -481,12 +675,12 @@ export class ExportService {
       // Track max widths for auto-sizing
       const rowValues = [
         t.title?.name || 'General',
-        t.description,
-        t.entry_date,
+        t.description || '',
+        fmtDate(t.entry_date),
         statusLabel(t.status),
-        t.tags?.join(', ') || '',
-        t.cost != null ? `$${t.cost.toFixed(2)}` : '',
-        t.time_spent_minutes != null ? String(t.time_spent_minutes) : '',
+        tagsStr,
+        formatCost(t.cost),
+        formatTime(t.time_spent_minutes),
       ];
       rowValues.forEach((v, i) => {
         if (v) colMaxWidths[i] = Math.max(colMaxWidths[i]!, Math.min(v.length + 4, 60));
@@ -523,12 +717,12 @@ export class ExportService {
 
     const rows = subtasks.map(t => [
       escape(t.title?.name || 'General'),
-      escape(t.description),
-      t.entry_date,
+      escape(t.description || ''),
+      fmtDate(t.entry_date),
       escape(statusLabel(t.status)),
-      escape(t.tags?.join('; ') || ''),
-      t.cost != null ? t.cost.toFixed(2) : '',
-      t.time_spent_minutes != null ? String(t.time_spent_minutes) : '',
+      escape(formatTags(t.tags, '; ')),
+      formatCostRaw(t.cost),
+      t.time_spent_minutes != null && (t.time_spent_minutes as any) !== '' ? String(t.time_spent_minutes) : '',
     ].join(','));
 
     const content = [headers.join(','), ...rows].join('\n');

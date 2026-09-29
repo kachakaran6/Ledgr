@@ -257,6 +257,92 @@ describe('Export Engine — PDF, XLSX, CSV', () => {
     expect(res.rawPayload.subarray(0, 5).toString('ascii')).toBe('%PDF-');
   });
 
+  it('PDF: handles string-typed cost without .toFixed crashing (e.g. from Postgres NUMERIC)', async () => {
+    const db = getDatabase();
+    if (db.reset) await db.reset();
+
+    const uRes = await app.inject({
+      method: 'POST',
+      url: '/api/auth/signup',
+      payload: { email: 'numtest@test.com', password: 'password123', name: 'Num Test' },
+    });
+    const token = JSON.parse(uRes.body).data.token;
+    const tRes = await app.inject({
+      method: 'POST',
+      url: '/api/titles',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'Cost Field Test' },
+    });
+    const tId = JSON.parse(tRes.body).data.id;
+
+    // Directly insert into DB or simulate string cost
+    const createdSubtask = await db.createSubtask((JSON.parse(uRes.body).data as any).user.id, {
+      title_id: tId,
+      description: 'Simulating Postgres numeric string return',
+      entry_date: getTodayDateString(),
+      status: 'done',
+      tags: [],
+      sort_order: 0,
+      cost: '149.99' as any,
+      time_spent_minutes: 45,
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/export/pdf',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { format: 'pdf', subtask_ids: [createdSubtask.id] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('application/pdf');
+    expect(res.rawPayload.subarray(0, 5).toString('ascii')).toBe('%PDF-');
+  });
+
+  it('PDF: handles Devanagari and Gujarati titles and tasks gracefully', async () => {
+    const db = getDatabase();
+    if (db.reset) await db.reset();
+
+    const uRes = await app.inject({
+      method: 'POST',
+      url: '/api/auth/signup',
+      payload: { email: 'indictest@test.com', password: 'password123', name: 'राजेश पटेल' },
+    });
+    const token = JSON.parse(uRes.body).data.token;
+    const tRes = await app.inject({
+      method: 'POST',
+      url: '/api/titles',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'HVAC સમારકામ' },
+    });
+    const tId = JSON.parse(tRes.body).data.id;
+
+    await app.inject({
+      method: 'POST',
+      url: '/api/subtasks',
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        title_id: tId,
+        description: 'कंप्रेसर और पाइपलाइन की मरम्मत पूर्ण - કામ પૂરું થયું',
+        entry_date: getTodayDateString(),
+        status: 'done',
+        cost: 350.00,
+        tags: ['urgent', 'રિપેર'],
+      },
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/export/pdf',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { format: 'pdf' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('application/pdf');
+    expect(res.rawPayload.subarray(0, 5).toString('ascii')).toBe('%PDF-');
+  });
+
   // ─────────────────────────────────────────────────────────
   // Excel Tests
   // ─────────────────────────────────────────────────────────

@@ -28,8 +28,11 @@ export const exportRoutes: FastifyPluginAsync = async (fastify) => {
       }
       // Log and re-throw any unexpected errors
       fastify.log.error({ err }, 'PDF export failed');
+      const isProd = process.env.NODE_ENV === 'production';
       throw fastify.httpErrors.internalServerError(
-        'Export failed — an error occurred while generating the PDF. Please try again.'
+        isProd
+          ? 'Export failed — an error occurred while generating the PDF. Please try again.'
+          : `Export failed — an error occurred while generating the PDF: ${msg}`
       );
     }
 
@@ -62,8 +65,11 @@ export const exportRoutes: FastifyPluginAsync = async (fastify) => {
         throw fastify.httpErrors.badRequest(msg.replace('NO_ENTRIES: ', ''));
       }
       fastify.log.error({ err }, 'Excel export failed');
+      const isProd = process.env.NODE_ENV === 'production';
       throw fastify.httpErrors.internalServerError(
-        'Export failed — an error occurred while generating the spreadsheet. Please try again.'
+        isProd
+          ? 'Export failed — an error occurred while generating the spreadsheet. Please try again.'
+          : `Export failed — an error occurred while generating the spreadsheet: ${msg}`
       );
     }
 
@@ -99,8 +105,11 @@ export const exportRoutes: FastifyPluginAsync = async (fastify) => {
         throw fastify.httpErrors.badRequest(msg.replace('NO_ENTRIES: ', ''));
       }
       fastify.log.error({ err }, 'CSV export failed');
+      const isProd = process.env.NODE_ENV === 'production';
       throw fastify.httpErrors.internalServerError(
-        'Export failed — an error occurred while generating the CSV. Please try again.'
+        isProd
+          ? 'Export failed — an error occurred while generating the CSV. Please try again.'
+          : `Export failed — an error occurred while generating the CSV: ${msg}`
       );
     }
 
