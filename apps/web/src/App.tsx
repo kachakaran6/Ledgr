@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon, DownloadIcon, AlertTriangleIcon } from './components/icons';
 import { Header } from './components/Header';
@@ -12,9 +12,12 @@ import { ExportModal } from './components/ExportModal';
 import { ShortcutsHelpModal } from './components/ShortcutsHelpModal';
 import { AuthModal } from './components/AuthModal';
 import { AuthGate } from './components/AuthGate';
+import { IOSInstallGuideModal, PWAInstallBanner } from './components/PWAInstallGuide';
 import { Button } from './components/ui/button';
 import { useUI } from './context/UIContext';
 import { useAuth } from './context/AuthContext';
+import { usePWAInstall } from './hooks/usePWAInstall';
+import { useBackNavigation } from './hooks/useBackNavigation';
 import { api } from './lib/api';
 import { localDb } from './lib/db';
 import { syncEngine } from './lib/sync';
@@ -50,6 +53,17 @@ export const App: React.FC = () => {
     setIsAuthOpen,
   } = useUI();
 
+  // PWA Install state and prompt actions
+  const {
+    canInstall,
+    isInstalled,
+    showIOSGuide,
+    setShowIOSGuide,
+    showBanner,
+    dismissBanner,
+    promptInstall,
+  } = usePWAInstall();
+
   const [editingSubtask, setEditingSubtask] = useState<Subtask | null>(null);
   const [editingTitle, setEditingTitle] = useState<Title | null>(null);
 
@@ -65,34 +79,72 @@ export const App: React.FC = () => {
     return (params.get('tab') as 'tasks' | 'ledger') || 'tasks';
   });
 
-  // Sync activeTaskId and activeTab with URL query parameters
-  useEffect(() => {
+  // Navigation handlers with clean History push/pop
+  const handleOpenTask = useCallback((taskId: string) => {
+    setActiveTaskId(taskId);
     const params = new URLSearchParams(window.location.search);
-    if (activeTaskId) {
-      params.set('taskId', activeTaskId);
+    params.set('taskId', taskId);
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.pushState({ page: 'task', taskId }, '', newUrl);
+  }, []);
+
+  const handleCloseTask = useCallback(() => {
+    if (window.history.state?.page === 'task' || window.history.state?.taskId) {
+      window.history.back();
     } else {
+      setActiveTaskId(null);
+      const params = new URLSearchParams(window.location.search);
       params.delete('taskId');
       params.delete('task');
+      const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+      window.history.replaceState(window.history.state, '', newUrl);
     }
+  }, []);
+
+  // Back Navigation & Modal Stack Manager
+  const { exitToast } = useBackNavigation({
+    activeTaskId,
+    onCloseTask: () => setActiveTaskId(null),
+    openModals: {
+      isAddSubtaskOpen,
+      setIsAddSubtaskOpen,
+      isAddTitleOpen,
+      setIsAddTitleOpen,
+      isExportOpen,
+      setIsExportOpen,
+      isShortcutsOpen,
+      setIsShortcutsOpen,
+      isAuthOpen,
+      setIsAuthOpen,
+      showIOSGuide,
+      setShowIOSGuide,
+    },
+    isSelectionMode,
+    setIsSelectionMode,
+  });
+
+  // Handle URL shortcut params (e.g. from PWA shortcut)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'new_log') {
+      setIsAddSubtaskOpen(true);
+      params.delete('action');
+      const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+      window.history.replaceState(window.history.state, '', newUrl);
+    }
+  }, [setIsAddSubtaskOpen]);
+
+  // Sync activeTab with URL query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
     if (activeTab === 'ledger') {
       params.set('tab', 'ledger');
     } else {
       params.delete('tab');
     }
     const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
-    window.history.replaceState({}, '', newUrl);
-  }, [activeTaskId, activeTab]);
-
-  // Handle browser Back / Forward buttons cleanly
-  useEffect(() => {
-    const handlePopState = () => {
-      const params = new URLSearchParams(window.location.search);
-      setActiveTaskId(params.get('taskId') || params.get('task') || null);
-      setActiveTab((params.get('tab') as 'tasks' | 'ledger') || 'tasks');
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+    window.history.replaceState(window.history.state, '', newUrl);
+  }, [activeTab]);
 
   // Global Keyboard Shortcuts
   useEffect(() => {
@@ -115,17 +167,40 @@ export const App: React.FC = () => {
         e.preventDefault();
         setIsShortcutsOpen(true);
       } else if (e.key === 'Escape') {
-        setIsAddSubtaskOpen(false);
-        setIsAddTitleOpen(false);
-        setIsExportOpen(false);
-        setIsShortcutsOpen(false);
-        setIsAuthOpen(false);
+        if (showIOSGuide) {
+          setShowIOSGuide(false);
+        } else if (isAddSubtaskOpen) {
+          setIsAddSubtaskOpen(false);
+        } else if (isAddTitleOpen) {
+          setIsAddTitleOpen(false);
+        } else if (isExportOpen) {
+          setIsExportOpen(false);
+        } else if (isShortcutsOpen) {
+          setIsShortcutsOpen(false);
+        } else if (isAuthOpen) {
+          setIsAuthOpen(false);
+        } else if (activeTaskId) {
+          handleCloseTask();
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSelectionMode, setIsSelectionMode, toggleTheme, setIsShortcutsOpen, setIsAddSubtaskOpen, setIsAddTitleOpen, setIsExportOpen, setIsAuthOpen]);
+  }, [
+    isSelectionMode,
+    setIsSelectionMode,
+    toggleTheme,
+    setIsShortcutsOpen,
+    setIsAddSubtaskOpen,
+    setIsAddTitleOpen,
+    setIsExportOpen,
+    setIsAuthOpen,
+    showIOSGuide,
+    setShowIOSGuide,
+    activeTaskId,
+    handleCloseTask,
+  ]);
 
   // 1. Fetch Titles Query
   const {
@@ -481,7 +556,7 @@ export const App: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['titles'] });
       // When a new task is created, automatically open it in its separate page!
       if (saved?.id && !editingTitle) {
-        setActiveTaskId(saved.id);
+        handleOpenTask(saved.id);
       }
     },
   });
@@ -498,7 +573,7 @@ export const App: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['allUserSubtasks'] });
       queryClient.invalidateQueries({ queryKey: ['activeTaskSubtasks'] });
       if (activeTaskId) {
-        setActiveTaskId(null);
+        handleCloseTask();
       }
     },
   });
@@ -523,7 +598,7 @@ export const App: React.FC = () => {
             isLoading={isLoadingTaskSubtasks}
             isError={isErrorTaskSubtasks}
             onRetry={() => refetchTaskSubtasks()}
-            onBack={() => setActiveTaskId(null)}
+            onBack={handleCloseTask}
             onUpdateTitle={async (_titleId, input) => {
               setEditingTitle(activeTask);
               await saveTitleMutation.mutateAsync({
@@ -536,7 +611,7 @@ export const App: React.FC = () => {
             }}
             onDeleteTitle={async (titleId) => {
               await deleteTitleMutation.mutateAsync(titleId);
-              setActiveTaskId(null);
+              handleCloseTask();
             }}
             onAddSubtask={async (input) => {
               await saveSubtaskMutation.mutateAsync(input);
@@ -555,7 +630,7 @@ export const App: React.FC = () => {
             <p className="text-xs text-muted-foreground mt-1 mb-4">
               This task may have been deleted or the link is invalid.
             </p>
-            <Button onClick={() => setActiveTaskId(null)} size="sm">
+            <Button onClick={handleCloseTask} size="sm">
               Back to Tasks
             </Button>
           </div>
@@ -596,8 +671,28 @@ export const App: React.FC = () => {
         </div>
       )}
 
+      {/* Accidental Exit Prevention Toast */}
+      {exitToast && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-card/95 border border-border text-foreground text-xs font-semibold shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2">
+          {exitToast}
+        </div>
+      )}
+
       {/* Header */}
-      <Header showSelection={activeTab === 'ledger'} />
+      <Header
+        showSelection={activeTab === 'ledger'}
+        canInstall={canInstall}
+        isInstalled={isInstalled}
+        onInstall={promptInstall}
+      />
+
+      {/* PWA Install Banner */}
+      {showBanner && (
+        <PWAInstallBanner
+          onInstall={promptInstall}
+          onDismiss={dismissBanner}
+        />
+      )}
 
       {/* Top View Switcher Tabs: [Tasks] and [All Logs] */}
       <div className="border-b border-border bg-card/60 px-4 sm:px-6 sticky top-13 z-20 backdrop-blur-md">
@@ -647,7 +742,7 @@ export const App: React.FC = () => {
             isLoading={isAuthLoading || isTitlesLoading}
             isError={isTitlesError}
             onRetry={() => refetchTitles()}
-            onSelectTask={(taskId) => setActiveTaskId(taskId)}
+            onSelectTask={handleOpenTask}
             onAddTask={() => {
               setEditingTitle(null);
               setIsAddTitleOpen(true);
@@ -678,7 +773,7 @@ export const App: React.FC = () => {
                 setEditingSubtask(null);
                 setIsAddSubtaskOpen(true);
               }}
-              onOpenTaskPage={(taskId) => setActiveTaskId(taskId)}
+              onOpenTaskPage={handleOpenTask}
             />
 
             {/* Main Single-Pane Log Feed */}
@@ -696,7 +791,7 @@ export const App: React.FC = () => {
                 setEditingSubtask(null);
                 setIsAddSubtaskOpen(true);
               }}
-              onOpenTaskPage={(taskId) => setActiveTaskId(taskId)}
+              onOpenTaskPage={handleOpenTask}
             />
           </>
         )}
@@ -792,6 +887,11 @@ export const App: React.FC = () => {
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
+      />
+
+      <IOSInstallGuideModal
+        isOpen={showIOSGuide}
+        onClose={() => setShowIOSGuide(false)}
       />
     </div>
   );

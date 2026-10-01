@@ -8,25 +8,80 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: [
+        'favicon.ico',
+        'favicon.svg',
+        'apple-touch-icon.png',
+        'icon-192.png',
+        'icon-512.png',
+        'icon-maskable-192.png',
+        'icon-maskable-512.png'
+      ],
       manifest: {
-        name: 'LogPast (Ledgr)',
-        short_name: 'LogPast',
-        description: 'Past-Only Work Log & Reporting Tool',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
+        id: '/',
+        name: 'Ledgr — Work Ledger',
+        short_name: 'Ledgr',
+        description: 'Past-Only Work Log & Reporting Tool for technicians and craftspeople',
+        theme_color: '#1C1B18',
+        background_color: '#1C1B18',
         display: 'standalone',
-        orientation: 'portrait-primary',
+        orientation: 'any',
+        start_url: '/',
+        scope: '/',
+        categories: ['productivity', 'business', 'utilities'],
         icons: [
           {
             src: '/icon-192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           },
           {
             src: '/icon-512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/icon-maskable-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable'
+          },
+          {
+            src: '/icon-maskable-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
+          },
+          {
+            src: '/apple-touch-icon.png',
+            sizes: '180x180',
+            type: 'image/png',
+            purpose: 'any'
+          }
+        ],
+        shortcuts: [
+          {
+            name: 'New Work Log',
+            short_name: 'Log Work',
+            description: 'Log completed past work immediately',
+            url: '/?action=new_log',
+            icons: [{ src: '/icon-192.png', sizes: '192x192' }]
+          },
+          {
+            name: 'Tasks View',
+            short_name: 'Tasks',
+            description: 'View all task groups',
+            url: '/?tab=tasks',
+            icons: [{ src: '/icon-192.png', sizes: '192x192' }]
+          },
+          {
+            name: 'All Work Logs',
+            short_name: 'Ledger',
+            description: 'View complete activity log',
+            url: '/?tab=ledger',
+            icons: [{ src: '/icon-192.png', sizes: '192x192' }]
           }
         ]
       },

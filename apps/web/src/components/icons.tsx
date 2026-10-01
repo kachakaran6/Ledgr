@@ -422,4 +422,28 @@ export const Check: React.FC<IconProps> = ({ className = 'h-5 w-5', ...props }) 
 );
 export const CheckIcon = Check;
 
+export const ShareIcon: React.FC<IconProps> = ({ className = 'h-5 w-5', ...props }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+    <polyline points="16 6 12 2 8 6" />
+    <line x1="12" y1="2" x2="12" y2="15" />
+  </svg>
+);
+
+export const SmartphoneIcon: React.FC<IconProps> = ({ className = 'h-5 w-5', ...props }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+    <line x1="12" y1="18" x2="12.01" y2="18" />
+  </svg>
+);
+
+export const DownloadCloudIcon: React.FC<IconProps> = ({ className = 'h-5 w-5', ...props }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+    <path d="M12 12v9" />
+    <path d="m8 17 4 4 4-4" />
+  </svg>
+);
+
+
 

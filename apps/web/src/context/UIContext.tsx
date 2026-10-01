@@ -86,16 +86,27 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
   // Update URL state (shareable, bookmarkable, refresh-safe)
   useEffect(() => {
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(window.location.search);
     if (selectedTitleId) params.set('title', selectedTitleId);
+    else params.delete('title');
+
     if (searchQuery) params.set('q', searchQuery);
+    else params.delete('q');
+
     if (datePreset && datePreset !== 'all') params.set('preset', datePreset);
+    else params.delete('preset');
+
     if (customStartDate) params.set('start', customStartDate);
+    else params.delete('start');
+
     if (customEndDate) params.set('end', customEndDate);
+    else params.delete('end');
+
     if (statusFilter) params.set('status', statusFilter);
+    else params.delete('status');
 
     const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
-    window.history.replaceState({}, '', newUrl);
+    window.history.replaceState(window.history.state, '', newUrl);
   }, [selectedTitleId, searchQuery, datePreset, customStartDate, customEndDate, statusFilter]);
 
   // Apply theme to document

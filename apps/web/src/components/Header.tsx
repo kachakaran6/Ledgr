@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   CloudSlashIcon,
   MoonIcon,
@@ -11,6 +10,8 @@ import {
   SquareIcon,
   RefreshCwIcon,
   FileTextIcon,
+  DownloadCloudIcon,
+  SmartphoneIcon,
 } from './icons';
 import { useAuth } from '../context/AuthContext';
 import { useUI } from '../context/UIContext';
@@ -28,9 +29,17 @@ import {
 
 interface HeaderProps {
   showSelection?: boolean;
+  canInstall?: boolean;
+  isInstalled?: boolean;
+  onInstall?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ showSelection = false }) => {
+export const Header: React.FC<HeaderProps> = ({
+  showSelection = false,
+  canInstall = false,
+  isInstalled = false,
+  onInstall,
+}) => {
   const { user, logout, deleteAccount } = useAuth();
   const {
     theme,
@@ -113,6 +122,20 @@ export const Header: React.FC<HeaderProps> = ({ showSelection = false }) => {
             </Button>
           )}
 
+          {/* PWA Install Button (shown when installable) */}
+          {canInstall && onInstall && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onInstall}
+              className="h-8 px-2.5 text-xs gap-1.5 font-medium border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+              title="Install Ledgr as a desktop or mobile application"
+            >
+              <DownloadCloudIcon className="h-3.5 w-3.5" />
+              <span className="hidden xs:inline sm:inline">Install App</span>
+            </Button>
+          )}
+
           {/* Theme Toggle */}
           <Button
             variant="ghost"
@@ -153,8 +176,19 @@ export const Header: React.FC<HeaderProps> = ({ showSelection = false }) => {
                 <p className="text-[11px] font-normal text-muted-foreground truncate">
                   {user?.email || 'demo@logpast.app'}
                 </p>
+                {isInstalled && (
+                  <p className="text-[10px] text-primary font-mono mt-1 flex items-center gap-1">
+                    <SmartphoneIcon className="h-3 w-3" /> Standalone PWA Mode
+                  </p>
+                )}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              {canInstall && onInstall && (
+                <DropdownMenuItem onClick={onInstall} className="gap-2 text-xs font-semibold text-primary cursor-pointer">
+                  <DownloadCloudIcon className="h-3.5 w-3.5 text-primary" />
+                  <span>Install Ledgr App</span>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => setIsExportOpen(true)} className="gap-2 text-xs font-medium cursor-pointer">
                 <FileTextIcon className="h-3.5 w-3.5 text-foreground" />
                 <span>Export Report (PDF / Excel)</span>

@@ -4,7 +4,19 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import { UIProvider } from './context/UIContext';
 import { App } from './App';
+import { registerSW } from 'virtual:pwa-register';
 import './index.css';
+
+// Automatically register and update the PWA service worker
+registerSW({
+  immediate: true,
+  onNeedRefresh() {
+    console.log('[PWA] New content available, updating...');
+  },
+  onOfflineReady() {
+    console.log('[PWA] App is ready to work offline');
+  },
+});
 
 const queryClient = new QueryClient({
   defaultOptions: {
